@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
 import os.path, types
+import sys
 
-from mypeg import Text
-from feature import FeatureParser
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+from lib.gherkin.mypeg import Text
+from lib.gherkin.feature import FeatureParser
 from pprint import pprint
 
 file = open(os.path.join(os.path.dirname(__file__), 'add.feature'))
