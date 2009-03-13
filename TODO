@@ -1,0 +1,100 @@
+ Tasks
+==============================
+ - PEG Parser
+	- Memorize for PEG Parser
+	+ Improve structure of library
+	- Tests:
+		- sequence
+		- guess url
+	+ Shadowed/Skipped rules
+
+ + Test runner
+
+ + Grammar
+
+ - Feature
+	- Before statement
+	- Examples statements
+	- i18n
+		- Language 
+ 
+ - StepDefinitions (step definitions collector)
+ 
+ - Runner
+   
+ - Configuration
+	- CLI
+		- Options
+		- Colored output
+	- YAML
+	- Layering of options (Default -> Profile -> (ENV?) -> Command line)
+	- Options
+		- require
+		- language
+		- format
+		- out
+		- tags
+		- scenario
+		- exclude
+		- profile
+		- [no-]color
+		- dry-run
+		- autoformat
+		- no-multiline
+		- no-source
+		- no-snippets
+		- quiet
+		- backtrace
+		- verbose
+		- guess
+
+ - Reporters
+	- pretty
+	- profile
+	- progress
+	- rerun
+	- HTML
+	- unittest
+
+ - Output
+	- stdout
+	- file
+
+
+ Scheme
+==============================
+
+ CLI YAML
+  |   |
+  |   |
+  |   |           Output
+  |   |
+  |   |	           ^  ^ 
+  |   |            |  |
+  V   V   +--------+  |
+          |           |
+Configuration --> Runner <-- StepDefinitions
+  |
+  |                ^  ^
+  |                |  |
+  |     +----------+  +-----------+
+  |	    |      	                  |
+  | Reporter                  Scenarios <-- Grammar <-- Languages
+  |                                                        
+  |                                                        ^
+  |                                                        |
+  +--------------------------------------------------------+
+
+
+ Options
+==============================
+  tags, scenario, exclude => Runner (loading features)
+  autoformat, dry-run => Runner (dry run)
+  strict => Runner
+  language => Language 
+  format => Runner (for choose Reporter(s))
+  require, guess => StepDefinitions
+  out => Output (where)
+  profile => Configuration
+  [no-]color, no-source, no-snippets, quiet, verbose, no-multiline => Reporter 
+
