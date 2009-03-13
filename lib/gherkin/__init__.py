@@ -1,3 +1,1 @@
-#! /usr/bin/env python
-
-__all__ = ['mypeg', 'feature']
+__all__ = ['feature', 'languages']

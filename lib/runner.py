@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
-import rules
 import os
-from gherkin.mypeg import Text
+from step_definitions import StepDefinitions
 from gherkin.feature import FeatureParser
 
 class Runner(object):
     def __init__(self):
-        self.rules = rules.Rules()
+        self.rules = StepDefinitions()
         self.parser = FeatureParser()
         self.kw_map = {
             'Given': self.rules.given,
@@ -17,21 +16,26 @@ class Runner(object):
         
     def load_step_definitions(self, startdir):
         for root, dirs, files in os.walk(startdir):
-            for file in files:
-                if file[-3:] == '.py':
-                    self.rules.load_from_file(os.path.join(root, file))
+            for file in [x for x in files if x.endwith('.py')]:
+                self.rules.load_from_file(os.path.join(root, file))
 
-    def run_feature(self, feature_file):
-        feature = self.parser.parse(Text(open(feature_file)))
-        for sc in feature['feature_elements']:
-            print sc[0], sc[1]['name']
-            for step in sc[1]['steps']:
+    def run_feature(self, feature_source, source_type=SourceType.GUESS):
+        feature = self.parser(feature_source, source_type)
+        for sc in feature.feature_elements:
+            print sc[0], sc[1].name
+            for step in sc[1].steps:
                 try:
-                    self.kw_map[step['step_keyword']](step['name'])
+                    self.kw_map[step.step_keyword](step.name)
                 except Exception, e:
-                    print "[FAILED]", step['step_keyword'], step['name']
+                    self.failed(step)
                 else:
-                    print "[PASSED]", step['step_keyword'], step['name']
+                    self.passed(step)
+
+    def run_dir(self, startdir):
+        for root, dirs, files in os.walk(startdir):
+            for file in [x for x in files if x.endswith('.feature')]:
+                self.run_feature(os.path.join(root, file), SourceType.FILE)
+
         
 if __name__ == '__main__':
     r = Runner()

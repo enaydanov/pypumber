@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 
 import os.path, types
-
 from feature_grammar import feature
-from mypeg import PEGParser
+from peg import PEGParser, Source
 
 
 class FeatureParser(PEGParser):
+    _shadowed_non_terminals = ['line_to_eol', 'ts']
+    _skipped_non_terminals = ['space', 'eol', 'white', 'comment']
+    
     def __init__(self):
         PEGParser.__init__(self, feature)
     
-    def non_terminal(self, text, pattern):
-        r = PEGParser.non_terminal(self, text, pattern)
+    def _non_terminal(self, pattern):
+        r = PEGParser._non_terminal(self, pattern)
         if r is not None and type(r) == types.TupleType and type(r[1]) == types.ListType and len(r[1]) > 1:
             for x in r[1]:
                 if type(x) != types.StringType and len(x) != 1:

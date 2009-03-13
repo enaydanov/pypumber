@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import re
-from mypeg import *
+from peg import *
 
 def table():
     """ table <- table_row+ """
@@ -12,19 +12,19 @@ def cells():
     return OneOrMore(cell, '|')
 
 def table_row():
-    """ table_row <- __space* '|' cells __space* (__eol+ | eof) """
-    return ZeroOrMore(__space), '|', cells, ZeroOrMore(__space), [OneOrMore(__eol), eof]
+    """ table_row <- space* '|' cells space* (eol+ | eof) """
+    return ZeroOrMore(space), '|', cells, ZeroOrMore(space), [OneOrMore(eol), eof]
 
 def cell():
-    """ cell <-  (!('|' | __eol) .)* """
-    return ZeroOrMore(Not(['|', __eol]), AnyChar)
+    """ cell <-  (!('|' | eol) .)* """
+    return ZeroOrMore(Not(['|', eol]), AnyChar)
 
 def __space():
-    """ __space <- [ \t] """
+    """ space <- [ \t] """
     return re.compile(r'[ \t]')
 
-def __eol():
-    """ __eol <- "\n" | ("\r" "\n"?) """
+def eol():
+    """ eol <- "\n" | ("\r" "\n"?) """
     return ["\n", ("\r", ZeroOrOne("\n"))] 
 
 def eof():
