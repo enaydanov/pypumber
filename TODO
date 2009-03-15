@@ -16,11 +16,12 @@
 	- Before statement
 	- Examples statements
 	- i18n
-		- Language 
+		+ Language
+    - Try to implement setting language per FeatureParser instance
  
  - StepDefinitions (step definitions collector)
  
- - Runner
+ - Core
    
  - Configuration
 	- CLI
@@ -55,6 +56,8 @@
 	- rerun
 	- HTML
 	- unittest
+ 
+ - Multiplexor
 
  - Output
 	- stdout
@@ -73,7 +76,7 @@
   |   |            |  |
   V   V   +--------+  |
           |           |
-Configuration --> Runner <-- StepDefinitions
+Configuration -->  Run  <-- StepDefinitions
   |
   |                ^  ^
   |                |  |
@@ -88,11 +91,11 @@ Configuration --> Runner <-- StepDefinitions
 
  Options
 ==============================
-  tags, scenario, exclude => Runner (loading features)
-  autoformat, dry-run => Runner (dry run)
-  strict => Runner
+  tags, scenario, exclude => Run (loading features)
+  autoformat, dry-run => Run (dry run, reporter choosing)
+  strict => Run
   language => Language 
-  format => Runner (for choose Reporter(s))
+  format => Run (for choose Reporter(s))
   require, guess => StepDefinitions
   out => Output (where)
   profile => Configuration

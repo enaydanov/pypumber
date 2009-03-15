@@ -187,8 +187,24 @@ class TestStepDefinitions(unittest.TestCase):
         
         self.assertRaises(AmbiguousString, self.r.given, "10 - 5")
 
-    def test_020_load_from_file(self):
-        self.r.load_from_file(os.path.join(os.path.dirname(__file__), 'example_import.py'))
+    #~ def test_020_load_from_file(self):
+        #~ self.r.load_from_file(os.path.join(os.path.dirname(__file__), 'step_definitions', 'example_import.py'))
+        #~ self.assertEqual(self.r.given("some string"), "tmp")
+
+    def test_020_load__file(self):
+        self.r.load(os.path.join(os.path.dirname(__file__), 'step_definitions', 'example_import.py'))
+        self.assertEqual(self.r.given("some string"), "tmp")
+
+    def test_021_load__dir(self):
+        self.r.load(os.path.join(os.path.dirname(__file__), 'step_definitions'))
+        self.assertEqual(self.r.given("some string"), "tmp")
+
+    def test_022_load__multiple(self):
+        self.r.load(os.path.join(os.path.dirname(__file__), 'step_definitions'))
+        self.assertEqual(self.r.given("some string"), "tmp")
+        r = StepDefinitions()
+        r.load(os.path.join(os.path.dirname(__file__), 'step_definitions'))
+        self.assertEqual(r.given("some string"), "tmp")
         self.assertEqual(self.r.given("some string"), "tmp")
 
 

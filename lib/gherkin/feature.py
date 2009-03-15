@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-import os.path, types
+import types
+from peg import PEGParser
 from feature_grammar import feature
-from peg import PEGParser, Source
-
 
 class FeatureParser(PEGParser):
     _shadowed_non_terminals = ['line_to_eol', 'ts']

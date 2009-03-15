@@ -1,24 +1,26 @@
 #!/usr/bin/env python
 
 import re
-from mypeg import *
+from peg import *
+
+_language = None
 
 def background_keyword():
     """ background_keyword <- 'Background', ':' """
-    return 'Background', ':'
+    return _language.background, ':'
        
 def scenario_keyword():
     """ scenario_keyword <- 'Scenario', ':' """
-    return 'Scenario', ':'
+    return _language.scenario, ':'
 
 def scenario_outline_keyword():
     """ scenario_outline_keyword <- 'Scenario Outline', ':' """
-    return 'Scenario Outline', ':'
+    return _language.scenario_outline, ':'
 
 def step_keyword():
     """ step_keyword <- 'Given' | 'When' | 'Then' | 'And' | 'But' """
-    return ['Given', 'When', 'Then', 'And', 'But']
+    return [_laguage.given, _language.when, _language.then, _language.and_, _language.but]
 
 def examples_keyword():
     """ examples_keyword <- 'Examples', ':'? """
-    return 'Examples', ZeroOrOne(':')
+    return _language.examples, ZeroOrOne(':')

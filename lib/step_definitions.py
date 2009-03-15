@@ -165,16 +165,33 @@ class StepDefinitions(object):
         return func(*values, **kw_args)
 
 
-    def load_from_file(self, filename):
-        import sys, os.path
+    def load(self, path, require=None):
+        import sys, os
         import decorators
         
-        sys.path = [os.path.dirname(filename)] + sys.path
+        # TODO: respect `--require' option.
+
         for f in [f[5:].capitalize() for f in dir(self) if f[:5] == '_map_']:
             setattr(decorators, f, getattr(self, f))  
-        __import__(os.path.basename(filename)[:-3])
-        sys.path.pop(0)
-
+        
+        if os.path.isfile(path):
+            trip = [(os.path.dirname(path), [], [os.path.basename(path)])]
+        elif os.path.isdir(path):
+            trip = os.walk(path)
+        else:
+            raise Exception
+            
+        for root, dirs, files in trip:
+            sys.path.insert(0, os.path.abspath(root))
+            try:
+                for name in (f[:-3] for f in files if f.endswith('.py')):
+                    if name in sys.modules:
+                        reload(sys.modules[name])
+                    else:
+                        __import__(name)
+            finally:
+                sys.path.pop(0)
+            
 
 if __name__ == '__main__':
     pass

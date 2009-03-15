@@ -1,1 +1,1 @@
-__all__ = ['feature', 'languages']
+__all__ = ['feature', 'languages', 'feature_grammar']

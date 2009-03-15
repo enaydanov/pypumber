@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 
 import sys, copy, textwrap, optparse
-from gherkin.languages import Languages
+from gherkin.languages import Languages, set_language
 from version import version
-
 
 class PypumberHelpFormatter(optparse.IndentedHelpFormatter):
     """Pypumber Help Formatter.
@@ -20,6 +19,7 @@ class PypumberHelpFormatter(optparse.IndentedHelpFormatter):
     def __init__(self):
         optparse.IndentedHelpFormatter.__init__(self, max_help_position=40)
         self._short_opt_fmt = self.S()
+        self._long_opt_fmt = "%s %s"
 
     def format_option(self, option):
         result = []
@@ -43,7 +43,6 @@ class PypumberHelpFormatter(optparse.IndentedHelpFormatter):
         elif opts[-1] != "\n":
             result.append("\n")
         return "".join(result)
-
 
 def check_language(option, opt, value):
     if value == 'help' or value in Languages():
@@ -83,8 +82,10 @@ class PypumberOption (optparse.Option):
                     sys.exit()
             except KeyError:
                 raise optparse.OptionValueError('no help for option: %s' % opt)
+            setattr(values, dest, value)
         elif action == "comma_separated":
-            setattr(values, dest, value.split(","))
+            v = value.split(",")
+            setattr(values, dest, v)
         else:
             optparse.Option.take_action(self, action, dest, opt, value, values, parser)
 
@@ -119,6 +120,7 @@ def autoformat_option_callback(option, opt_str, value, parser):
     parser.values.formatter = 'pretty'
     setattr(parser.values, option.dest, value)
 
+# TODO:
 def lang_help_callback(lang=None):
     languages = Languages()
     if lang is None:
@@ -188,12 +190,8 @@ parser.add_option("-s", "--scenario", metavar="SCENARIO", action="append", dest=
 parser.add_option("-e", "--exclude", metavar="PATTERN", action="append", dest="excludes",
     help="Don't run feature files matching PATTERN.")
 
-# TODO:
 parser.add_option("-p", "--profile",
     help="Pull commandline arguments from pypumber.yml.")
-#~ opts.on("-p", "--profile PROFILE", "Pull commandline arguments from cucumber.yml.") do |v|
-  #~ parse_args_from_profile(v)
-#~ end
 
 parser.add_option("-c", "--color", action="store_true")
 parser.add_option("--no-color", action="store_false", dest="color", 
