@@ -5,11 +5,12 @@ import unittest, sys, os.path
 if __name__ == '__main__':
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'lib')))
 
-from singleton import Singleton
+from singleton import singleton
 
 class TestSingleton(unittest.TestCase):
     def testSingleton(self):
-        class A(Singleton):
+        @singleton
+        class A():
             def __init__(self):
                 self.a = 0
             
@@ -17,8 +18,9 @@ class TestSingleton(unittest.TestCase):
                 self.a += 1
         
         a = A()
-        b = A()
         a.inc()
+        
+        b = A()
         b.inc()
         
         self.assertEqual(a, b)

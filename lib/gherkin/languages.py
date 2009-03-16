@@ -2,7 +2,7 @@
 
 import os, sys
 
-from singleton import Singleton
+from singleton import singleton
 from attribute_mapper import AttributeMapper
 
 try:
@@ -11,9 +11,11 @@ except ImportError:
     sys.stderr.write("Error: unable to import PyYAML module. Please, download it from http://pyyaml.org\n")
     sys.exit()
 
+
 languages_file = os.path.join(os.path.dirname(__file__), 'languages.yml')
 
-class Languages(Singleton):
+@singleton
+class Languages(object):
     def __init__(self):
         try:
             f = None
@@ -31,8 +33,17 @@ class Languages(Singleton):
                 f.close()
         self.languages = self.__yaml.keys()
         self.languages.sort()
-        self.kw_cmp = lambda a, b: a in b 
-
+        self.kw_cmp = lambda a, b: a in b
+        setattr(self, '__current_language', None)
+    
+    @property
+    def lang(self):
+        return getattr(self, '__current_language')
+        
+    @lang.setter
+    def lang(self, value):
+        set_language(value)
+    
     def __iter__(self):
         return iter(self.languages)
     
@@ -44,10 +55,12 @@ class Languages(Singleton):
     def __contains__(self, key):
         return key in self.languages
 
+
 def set_language(lang):
     languages = Languages()
     if lang in languages:
         import i18n_grammar
         i18n_grammar._language = languages[lang]
+        setattr(languages, '__current_language', lang)
     else:
         raise ValueError("unknown language: %s" % lang)

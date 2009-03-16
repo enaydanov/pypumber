@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 import sys, copy, textwrap, optparse
-from gherkin.languages import Languages, set_language
+from gherkin.languages import Languages
 from version import version
 
 class PypumberHelpFormatter(optparse.IndentedHelpFormatter):
@@ -10,7 +10,8 @@ class PypumberHelpFormatter(optparse.IndentedHelpFormatter):
     This is IndentedHelpFormatter with small changes:
         1. max_help_position = 40
         2. It doesn't show arg name for short options.
-        3. It splits help text by blank line and show as separate paragraphs.
+        3. Format for long options is "--opt OPT"
+        4. It splits help text by blank line and show as separate paragraphs.
     """
     class S(object):
         def __mod__(self, arg):
@@ -84,7 +85,7 @@ class PypumberOption (optparse.Option):
                 raise optparse.OptionValueError('no help for option: %s' % opt)
             setattr(values, dest, value)
         elif action == "comma_separated":
-            v = value.split(",")
+            v = tuple(value.split(","))
             setattr(values, dest, v)
         else:
             optparse.Option.take_action(self, action, dest, opt, value, values, parser)
@@ -176,7 +177,6 @@ parser.add_option("-o", "--out", metavar="FILE", dest="output_filename",
     "applies to the previously specified --format, or the "
     "default format if no format is specified.")
 
-
 parser.add_option("-t", "--tags", action="comma_separated",
     help="Only execute the features or scenarios with the specified tags. "
     "TAGS must be comma-separated without spaces. Prefix tags with ~ to "
@@ -219,7 +219,6 @@ parser.add_option("-i", "--no-snippets", action="store_false", dest="snippets",
 parser.add_option("-q", "--quiet", action="callback", callback=quiet_option_callback,
     help="Alias for --no-snippets --no-source.")
 
-# TODO:
 parser.add_option("-b", "--backtrace", action="store_true",
     help="Show full backtrace for all errors.")
 

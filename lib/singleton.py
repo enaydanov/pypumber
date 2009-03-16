@@ -1,8 +1,25 @@
 #! /usr/bin/env python
 
-class Singleton(object):
-    __instance = None
-    def __new__(cls, *args, **kwargs):
-        if cls.__instance is None:
-            cls.__instance = super(Singleton, cls).__new__(cls, *args, **kwargs)
-        return cls.__instance
+"""Implementation of Singleton pattern.
+
+Example:
+    >>> @singleton
+    >>> class SomeClass(Singleton):
+    >>>   def __init__(self):
+    >>>     print "aaa"
+    >>> a = SomeClass()
+    aaa
+    
+    >>> b = SomeClass()
+    >>> a is b
+    True
+    
+"""
+
+def singleton(cls):
+    instances = {}
+    def getinstance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+    return getinstance

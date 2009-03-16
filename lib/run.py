@@ -1,29 +1,31 @@
 #!/usr/bin/env python
 
 import os
-#~ from step_definitions import StepDefinitions
-#~ from gherkin.feature import FeatureParser
+from step_definitions import StepDefinitions
+from gherkin.feature import FeatureParser
 #~ from reporter import load_reporters
-#~ from multiplexor import Multiplexor
+#~ from multiplexer import Multiplexer
 
 #~ _default_reporters_dir = os.path.join(os.path.dirname(__file__), 'reporters')
 
 
 class Run(object):
     def __init__(self):
-        for var in ['tags', 'scenario_names', 'excludes', 'path', 'require']:
+        for var in ['scenario_names', 'excludes', 'path', 'require']:
             setattr(self, var, [])
         
-        for var in ['dry_run', 'strict', 'autoformat']:
+        for var in ['tags', 'dry_run', 'strict', 'autoformat', 'reporter', 'backtrace']:
             setattr(self, var, None)
 
-    #~ def __call__()
-        #~ rules = StepDefinitions()
-        #~ parser = FeatureParser()
-        #~ reporter = reporter.Multiplexor(self.reporters)
+    def __call__():
+        rules = StepDefinitions()
+        parser = FeatureParser()
+        reporter = reporter.Multiplexer(self.reporters)
 
-        #~ for path in self.path:
-            #~ rules.load(path, self.require)
+# Walk thru path, exclude  
+
+        for path in self.path:
+            rules.load(path, self.require)
         
       #~ def feature_files
         #~ potential_feature_files = @paths.map do |path|

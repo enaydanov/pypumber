@@ -1,64 +1,97 @@
  Tasks
 ==============================
- - PEG Parser
-	- Memorize for PEG Parser
-	+ Improve structure of library
-	- Tests:
-		- sequence
-		- guess url
-	+ Shadowed/Skipped rules
 
- + Test runner
+ - Supplimentary modules
+  - PEG Parser
+    - Memorize for PEG Parser
+    + Improve structure of library
+    + Shadowed/Skipped rules
+  + Test runner
+  + Singleton
+  + Multiplexer
+  + cfg.Options
+    + apply options to given classes
+    + single value, accumulator
+  + Pypumber Options Parser
+    - Help callback for language
+    - '--format' option
+    - '--out' option
+    - set defaults (language, etc.)
+  - Version
+  + AttributeMapper
 
- + Grammar
+ - Tests:
+  - sequence
+  - guess url
 
- - Feature
-	- Before statement
-	- Examples statements
-	- i18n
-		+ Language
+ - Gherkin
+  + Grammar
+  + Language
+    - Options:
+      + language
     - Try to implement setting language per FeatureParser instance
+  - Parser
+    - Before statement
+    - Examples statements
+    - Table
  
  - StepDefinitions (step definitions collector)
- 
- - Core
-   
+  - Options:
+    - require
+    - guess
+
+ - Run
+  - Options:
+    - tags
+    - scenario_names
+    - excludes
+    - path
+    - require
+    - dry_run
+    - strict
+    - autoformat
+
  - Configuration
+  + Default
+    - options
 	- CLI
-		- Options
-		- Colored output
-	- YAML
-	- Layering of options (Default -> Profile -> (ENV?) -> Command line)
-	- Options
-		- require
-		- language
-		- format
-		- out
-		- tags
-		- scenario
-		- exclude
-		- profile
-		- [no-]color
-		- dry-run
-		- autoformat
-		- no-multiline
-		- no-source
-		- no-snippets
-		- quiet
-		- backtrace
-		- verbose
-		- guess
+    - Options
+      + require
+      + language
+      - format
+      - out
+      + tags
+      + scenario
+      + exclude
+      + profile
+      + [no-]color
+      + dry-run
+      + autoformat
+      + no-multiline
+      + no-source
+      + no-snippets
+      + quiet
+      + backtrace
+      + verbose
+      + guess
+	+ YAML
+  - Environment
+	+ Layering of options (Default -> Profile -> ENV -> Command line)
 
  - Reporters
 	- pretty
+    - Options:
+      - [no-]color
+      - no-source
+      - no-snippets
+      - verbose
+      - no-multiline
 	- profile
 	- progress
 	- rerun
 	- HTML
 	- unittest
  
- - Multiplexor
-
  - Output
 	- stdout
 	- file
@@ -93,11 +126,10 @@ Configuration -->  Run  <-- StepDefinitions
 ==============================
   tags, scenario, exclude => Run (loading features)
   autoformat, dry-run => Run (dry run, reporter choosing)
-  strict => Run
+  strict, backtrace => Run
   language => Language 
   format => Run (for choose Reporter(s))
   require, guess => StepDefinitions
-  out => Output (where)
+  out => Reporters (where)
   profile => Configuration
   [no-]color, no-source, no-snippets, quiet, verbose, no-multiline => Reporter 
-
