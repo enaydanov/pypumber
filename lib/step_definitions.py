@@ -11,7 +11,8 @@ __copyright__ = "Copyright (c) 2009 Eugene Naydanov"
 __license__ = "Python"
 
 
-import re
+import re, os.path, types
+from find_files import find_files
 
 
 class AmbiguousString(Exception): 
@@ -165,33 +166,26 @@ class StepDefinitions(object):
         return func(*values, **kw_args)
 
 
-    def load(self, path, require=None):
-        import sys, os
-        import decorators
-        
-        # TODO: respect `--require' option.
+    def load(self, paths, excludes=None):
+        import sys, decorators
 
         for f in [f[5:].capitalize() for f in dir(self) if f[:5] == '_map_']:
-            setattr(decorators, f, getattr(self, f))  
+            setattr(decorators, f, getattr(self, f))
         
-        if os.path.isfile(path):
-            trip = [(os.path.dirname(path), [], [os.path.basename(path)])]
-        elif os.path.isdir(path):
-            trip = os.walk(path)
-        else:
-            raise Exception
-            
-        for root, dirs, files in trip:
-            sys.path.insert(0, os.path.abspath(root))
+        if type(paths) == types.StringType:
+            paths = (paths, )
+        
+        for file in find_files(paths, '*.py', excludes):
+            sys.path.insert(0, os.path.dirname(file))
             try:
-                for name in (f[:-3] for f in files if f.endswith('.py')):
-                    if name in sys.modules:
-                        reload(sys.modules[name])
-                    else:
-                        __import__(name)
+                name = os.path.basename(file)[:-3] # get filename and drop .py extension
+                if name in sys.modules:
+                    reload(sys.modules[name])
+                else:
+                    __import__(name)
             finally:
                 sys.path.pop(0)
-            
+
 
 if __name__ == '__main__':
     pass

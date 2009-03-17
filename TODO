@@ -19,10 +19,12 @@
     - set defaults (language, etc.)
   - Version
   + AttributeMapper
+  + Find files
 
  - Tests:
   - sequence
   - guess url
+  - more tests for find_files
 
  - Gherkin
   + Grammar
@@ -37,16 +39,15 @@
  
  - StepDefinitions (step definitions collector)
   - Options:
-    - require
     - guess
 
  - Run
   - Options:
     - tags
     - scenario_names
-    - excludes
-    - path
-    - require
+    + excludes
+    + path
+    + require
     - dry_run
     - strict
     - autoformat

@@ -206,7 +206,7 @@ class TestStepDefinitions(unittest.TestCase):
         r.load(os.path.join(os.path.dirname(__file__), 'step_definitions'))
         self.assertEqual(r.given("some string"), "tmp")
         self.assertEqual(self.r.given("some string"), "tmp")
-
+   
 
 if __name__ == '__main__':
     unittest.main()
