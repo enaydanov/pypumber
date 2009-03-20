@@ -1,1 +1,4 @@
-__all__ = ['feature', 'languages', 'feature_grammar']
+#! /usr/bin/env python
+
+from feature_parser import FeatureParser
+from languages import Languages, set_language

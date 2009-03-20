@@ -167,11 +167,11 @@ class TestZeroOrMore(unittest.TestCase):
         self.assertEqual(parser._grammar.pattern, "dog")
     
     def test_001_zero_or_more__one(self):
-        self.assertEqual(PEGParser(ZeroOrMore("dogd"))(self.text), "dogd")
+        self.assertEqual(PEGParser(ZeroOrMore("dogd"))(self.text), ["dogd"])
         self.assertEqual(self.text.cur, 4)
         
     def test_002_zero_or_more__more(self):
-        self.assertEqual(PEGParser(ZeroOrMore("dog"))(self.text)(), ["dog", "dog", "dog"])
+        self.assertEqual(PEGParser(ZeroOrMore("dog"))(self.text), ["dog", "dog", "dog"])
         self.assertEqual(self.text.cur, 9)
 
     def test_003_zero_or_more__zero(self):
@@ -192,15 +192,15 @@ class TestOneOrMore(unittest.TestCase):
         self.assertEqual(parser._grammar.pattern, "dog")
     
     def test_001_one_or_more__one(self):
-        self.assertEqual(PEGParser(OneOrMore("dogd"))(self.text), "dogd")
+        self.assertEqual(PEGParser(OneOrMore("dogd"))(self.text), ["dogd"])
         self.assertEqual(self.text.cur, 4)
 
     def test_002_one_or_more__two(self):
-        self.assertEqual(PEGParser(OneOrMore("dogdog"))(self.text)(), ["dogdog", "dogdog"])
+        self.assertEqual(PEGParser(OneOrMore("dogdog"))(self.text), ["dogdog", "dogdog"])
         self.assertEqual(self.text.cur, 12)
         
     def test_003_one_or_more__more(self):
-        self.assertEqual(PEGParser(OneOrMore("dog"))(self.text)(), ["dog", "dog", "dog", "dog"])
+        self.assertEqual(PEGParser(OneOrMore("dog"))(self.text), ["dog", "dog", "dog", "dog"])
         self.assertEqual(self.text.cur, 12)
 
     def test_004_one_or_more__zero(self):
@@ -345,32 +345,32 @@ class TestAlternative(unittest.TestCase):
 class TestSequence(unittest.TestCase): pass
 
 
-class TestCachingPEGParser(unittest.TestCase):
-    class Cache(object):
-        def __init__(self):
-            self.store = {}
-            self.getCount = {}
+#~ class TestCachingPEGParser(unittest.TestCase):
+    #~ class Cache(object):
+        #~ def __init__(self):
+            #~ self.store = {}
+            #~ self.getCount = {}
         
-        def __contains__(self, key):
-            return key in self.store
+        #~ def __contains__(self, key):
+            #~ return key in self.store
         
-        def __getitem__(self, key):
-            self.getCount[key] += 1
-            return self.store[key]
+        #~ def __getitem__(self, key):
+            #~ self.getCount[key] += 1
+            #~ return self.store[key]
         
-        def __setitem__(self, key, value):
-            if key in self.store:
-                raise Exception
-            self.store[key] = value
-            self.getCount[key] = 0
+        #~ def __setitem__(self, key, value):
+            #~ if key in self.store:
+                #~ raise Exception
+            #~ self.store[key] = value
+            #~ self.getCount[key] = 0
 
-    def test_000_simple(self):
-        cache = self.Cache()
-        c = sys.getrefcount(cache)
-        self.assertEqual(CachingPEGParser((And("dog"), "dog"))("dogy dog", cache=cache), "dog")
-        self.assertEqual(c, sys.getrefcount(cache))
-        self.assertEqual(cache.store[(0, "dog")][0], "dog")
-        self.assertEqual(cache.getCount[(0, "dog")], 1)
+    #~ def test_000_simple(self):
+        #~ cache = self.Cache()
+        #~ c = sys.getrefcount(cache)
+        #~ self.assertEqual(CachingPEGParser((And("dog"), "dog"))("dogy dog", cache=cache), "dog")
+        #~ self.assertEqual(c, sys.getrefcount(cache))
+        #~ self.assertEqual(cache.store[(0, "dog")][0], "dog")
+        #~ self.assertEqual(cache.getCount[(0, "dog")], 1)
 
 
 if __name__ == '__main__':

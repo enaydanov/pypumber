@@ -59,7 +59,7 @@ class Multiplexer(list):
         list.__setattr__(self, '__outputs__', _Outputs(self))
     
     def __getattribute__(self, attr):
-        if attr == '__outputs__':
+        if attr in ['__outputs__', '__exit__']:
             return list.__getattribute__(self, attr)
         raise AttributeError
     
@@ -94,3 +94,10 @@ class Multiplexer(list):
         
     def __call__(self, *args, **kwargs):
         return Multiplexer(*[obj(*args, **kwargs) for obj in self])
+    
+    def __exit__(self, type, value, traceback):
+        # Return True only if all outputs suppress exception.
+        rv = True
+        for obj in self:
+            rv = rv and obj.__exit__(type, value, traceback)
+        return rv

@@ -34,15 +34,6 @@ class Languages(object):
         self.languages = self.__yaml.keys()
         self.languages.sort()
         self.kw_cmp = lambda a, b: a in b
-        setattr(self, '__current_language', None)
-    
-    @property
-    def lang(self):
-        return getattr(self, '__current_language')
-        
-    @lang.setter
-    def lang(self, value):
-        set_language(value)
     
     def __iter__(self):
         return iter(self.languages)
@@ -61,6 +52,5 @@ def set_language(lang):
     if lang in languages:
         import i18n_grammar
         i18n_grammar._language = languages[lang]
-        setattr(languages, '__current_language', lang)
     else:
         raise ValueError("unknown language: %s" % lang)

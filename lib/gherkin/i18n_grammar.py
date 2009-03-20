@@ -19,7 +19,7 @@ def scenario_outline_keyword():
 
 def step_keyword():
     """ step_keyword <- 'Given' | 'When' | 'Then' | 'And' | 'But' """
-    return [_laguage.given, _language.when, _language.then, _language.and_, _language.but]
+    return [_language.given, _language.when, _language.then, _language.and_, _language.but]
 
 def examples_keyword():
     """ examples_keyword <- 'Examples', ':'? """

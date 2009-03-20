@@ -6,6 +6,9 @@
     - Memorize for PEG Parser
     + Improve structure of library
     + Shadowed/Skipped rules
+    + Source (representation of source input)
+    + Node (representation of AST)
+    - RE decorator
   + Test runner
   + Singleton
   + Multiplexer
@@ -19,38 +22,48 @@
     - set defaults (language, etc.)
   - Version
   + AttributeMapper
+    - Remove it (Node have similar functionality)
   + Find files
 
  - Tests:
   - sequence
   - guess url
   - more tests for find_files
+  - full coverage testing
 
  - Gherkin
   + Grammar
   + Language
     - Options:
       + language
-    - Try to implement setting language per FeatureParser instance
+    - Try to implement setting language per Features instance
+    
   - Parser
-    - Before statement
+    + Background statement
     - Examples statements
     - Table
  
+ + Features:
+  + Options:
+    + path
+    + excludes
+    + language
+ 
  - StepDefinitions (step definitions collector)
   - Options:
+    + path
+    + excludes
+    + require
     - guess
+  - Load 'support' folder first.
 
  - Run
   - Options:
-    - tags
-    - scenario_names
-    + excludes
-    + path
-    + require
-    - dry_run
+    + tags
+    + scenario_names
     - strict
     - autoformat
+  - Support for multiline args
 
  - Configuration
   + Default
@@ -78,6 +91,7 @@
 	+ YAML
   - Environment
 	+ Layering of options (Default -> Profile -> ENV -> Command line)
+  + set_defaults
 
  - Reporters
 	- pretty
@@ -92,6 +106,7 @@
 	- rerun
 	- HTML
 	- unittest
+  - Loading reporter from file (like --format somefile.py)
  
  - Output
 	- stdout
@@ -125,12 +140,11 @@ Configuration -->  Run  <-- StepDefinitions
 
  Options
 ==============================
-  tags, scenario, exclude => Run (loading features)
-  autoformat, dry-run => Run (dry run, reporter choosing)
-  strict, backtrace => Run
-  language => Language 
+  path, excludes => Features, StepDefinitions
+  language => Features
+  require, guess, dry-run => StepDefinitions
+  tags, scenario, autoformat, strict, backtrace => Run
   format => Run (for choose Reporter(s))
-  require, guess => StepDefinitions
   out => Reporters (where)
   profile => Configuration
   [no-]color, no-source, no-snippets, quiet, verbose, no-multiline => Reporter 

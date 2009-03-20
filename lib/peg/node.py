@@ -25,6 +25,9 @@ class _Node(object):
 
     def __getitem__(self, key):
         return Node(self.__obj[key])
+    
+    def __eq__(self, value):
+        return self.__obj.__eq__(value)
 
 		
 class _NodeMap(_Node):

@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
 import unittest, sys, os.path
+from pprint import pprint
 
 if __name__ == '__main__':
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'lib')))
 
 from step_definitions import * 
 from step_definitions import _get_func_args as get_func_args
+from cfg.options import Options
+
+step_definitions_path = os.path.join(os.path.dirname(__file__), 'step_definitions')
 
 class TestGetFuncArgs(unittest.TestCase):
     def test_000_noargs(self):
@@ -192,18 +196,23 @@ class TestStepDefinitions(unittest.TestCase):
         #~ self.assertEqual(self.r.given("some string"), "tmp")
 
     def test_020_load__file(self):
-        self.r.load(os.path.join(os.path.dirname(__file__), 'step_definitions', 'example_import.py'))
+        self.r.path.append(os.path.join(step_definitions_path, 'example_import.py'))
+        self.r.load()
         self.assertEqual(self.r.given("some string"), "tmp")
 
     def test_021_load__dir(self):
-        self.r.load(os.path.join(os.path.dirname(__file__), 'step_definitions'))
+        self.r.path.append(step_definitions_path)
+        self.r.load()
         self.assertEqual(self.r.given("some string"), "tmp")
 
     def test_022_load__multiple(self):
-        self.r.load(os.path.join(os.path.dirname(__file__), 'step_definitions'))
+        opt = Options(path=step_definitions_path)
+        opt(self.r)
+        self.r.load()
         self.assertEqual(self.r.given("some string"), "tmp")
         r = StepDefinitions()
-        r.load(os.path.join(os.path.dirname(__file__), 'step_definitions'))
+        opt(r)
+        r.load()
         self.assertEqual(r.given("some string"), "tmp")
         self.assertEqual(self.r.given("some string"), "tmp")
    

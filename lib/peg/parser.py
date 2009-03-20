@@ -99,14 +99,14 @@ class PEGParser(object):
         return match
     
     
-    def _default_rule(self, name, subtree):
-        return name, subtree
+    def _default_rule(self, subtree):
+        return subtree
 
 
     def _non_terminal(self, pattern):
         """ Handler for nonterminal. """
         try:
-            result = self._parse_pattern(pattern())
+            result = getattr(self, pattern.__name__, self._default_rule)(self._parse_pattern(pattern()))
         except NameError:
             raise SyntaxError()
         
@@ -114,7 +114,7 @@ class PEGParser(object):
             return result
         
         if pattern.__name__ not in self._skipped_non_terminals:
-            return getattr(self, pattern.__name__, self._default_rule)(pattern.__name__, result)
+            return pattern.__name__, result
     
     
     def _sequence(self, pattern):
@@ -135,13 +135,11 @@ class PEGParser(object):
                     else:
                         result.append(tmp)
         except SyntaxError:
+            error_at = self._source.cur
             self._source.cur = old_cur
-            raise SyntaxError()
+            raise SyntaxError("error at %d.\nPattern: %s" % (error_at, repr(i)))
         
-        if len(result) == 1:
-            return result[0]
-        else:
-            return result
+        return result
     
     
     def _alternative(self, pattern):
@@ -188,12 +186,10 @@ class PEGParser(object):
         except SyntaxError:
             pass
     
-        if len(result) == 1:
-            return result[0]
-        elif len(result):
+        if len(result):
             return result
     
-    
+
     def _one_or_more(self, pattern):
         """ Handler for one-or-more quantifier:
             
@@ -209,12 +205,10 @@ class PEGParser(object):
         elif tmp is not None:
             result.append(tmp)
     
-        if len(result) == 1:
-            return result[0]
-        elif len(result):
+        if len(result):
             return result
-        
-    
+
+
     def _not_predicate(self, pattern):
         """ Handler for `not' predicate:
         
@@ -262,14 +256,14 @@ class CachingPEGParser(PEGParser):
         PEGParser.__init__(self, grammar)
         self._cache = {}
     
-    def _parse_pattern(self, pattern):
+    def _non_terminal(self, pattern):
         if (self._source.cur, pattern) in self._cache:
             rv = self._cache[self._source.cur, pattern]
             self._source.cur = rv[1]
             return rv[0]
 
         cur = self._source.cur
-        rv = PEGParser._parse_pattern(self, pattern)
+        rv = PEGParser._parse_pattern(self, pattern())
         if (cur, pattern) not in self._cache: 
             self._cache[(cur, pattern)] = (rv, self._source.cur)
         

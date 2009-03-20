@@ -13,6 +13,8 @@ __license__ = "Python"
 
 import re, os.path, types
 from find_files import find_files
+from cfg.set_defaults import set_defaults
+from multiplexer import Multiplexer
 
 
 class AmbiguousString(Exception): 
@@ -44,24 +46,47 @@ def _get_func_args(f):
     return (names, arg_name, kw_name, argcount) 
 
 
+_step_keywords = ['given', 'when', 'then']
+_hooks = ['before', 'after', 'afterStep']
+
+class DryRun(object):
+    def __init__(self):
+        for kw in _step_keywords:
+            setattr(self, kw, lambda *args: None)
+
+    def load():
+        pass
+
+
 class StepDefinitions(object):
     def __init__(self):
-        self._map_given = {}
-        self._map_when = {}
-        self._map_then = {}
-        self._map_before = {}
+        # Options.
+        set_defaults(self, 'path', 'excludes', 'require', 'guess')
         
-        # Make decorators and runners for all maps.
-        for f in [(f[5:], f) for f in dir(self) if f[:5] == '_map_']:
-            setattr(self, f[0].capitalize(),
-                lambda string, *args:
-                    self.__add_rule(getattr(self, f[1]), string, *args)) 
-            setattr(self, f[0],
-                lambda string:
-                    self.__find_and_run(getattr(self, f[1]), string)) 
+        def first_arg_closure(first_arg, fn):
+            def tmp(*args):
+                return fn(first_arg, *args)
+            return tmp
+        
+        # Create mappings, decorators and runners for step definitions.
+        for kw in _step_keywords:
+            # Create map.
+            map_name = '_map_%s' % kw
+            setattr(self, map_name, {})
+            map = getattr(self, map_name)
+            
+            # Make decorators and runners.
+            setattr(self, kw.capitalize(), first_arg_closure(map, self.__add_rule)) 
+            setattr(self, kw, first_arg_closure(map, self.__find_and_run))
+        
+        # Create multiplexers and decorators for hooks.
+        for hook in _hooks:
+            setattr(self, hook, Multiplexer())
+            setattr(self, hook.capitalize(), first_arg_closure(getattr(self, hook), self.__add_hook))
     
     
     def __add_rule(self, patterns, string, *args):
+        """Add rule for string to patterns (which is one of the mappings)."""
         if len(set(args)) != len(args):
             raise TypeError()
         def tmp(func):
@@ -69,6 +94,12 @@ class StepDefinitions(object):
             return func
         return tmp
 
+    def __add_hook(self, multiplexer):
+        """Add hook to multiplexer."""
+        def tmp(func):
+            multiplexer.__outputs__.append(func)
+            return func
+        return tmp
     
     def __find_and_run(self, patterns, string):
         """Find match for string in patterns and run handler."""
@@ -166,14 +197,24 @@ class StepDefinitions(object):
         return func(*values, **kw_args)
 
 
-    def load(self, paths, excludes=None):
+    def load(self):
+        """Load step definitions from configured paths."""
         import sys, decorators
 
-        for f in [f[5:].capitalize() for f in dir(self) if f[:5] == '_map_']:
-            setattr(decorators, f, getattr(self, f))
+        # Set up paths.
+        if self.require:
+            paths = self.require
+            excludes = None
+        else:
+            paths = self.path
+            excludes = self.excludes
+
+        # Set up decorators.
+        for kw in _step_keywords + _hooks:
+            deco = kw.capitalize()
+            setattr(decorators, deco, getattr(self, deco))
         
-        if type(paths) == types.StringType:
-            paths = (paths, )
+        assert type(paths) == types.ListType
         
         for file in find_files(paths, '*.py', excludes):
             sys.path.insert(0, os.path.dirname(file))
