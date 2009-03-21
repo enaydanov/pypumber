@@ -34,9 +34,8 @@
  - Gherkin
   + Grammar
   + Language
-    - Options:
+    + Options:
       + language
-    - Try to implement setting language per Features instance
     
   - Parser
     + Background statement
@@ -56,13 +55,16 @@
     + require
     - guess
   - Load 'support' folder first.
-
+  
+ - Context (sandbox for step execution)
+  + Options:
+    + strict
+  - Handling for 'But' kw
+  
  - Run
-  - Options:
+  + Options:
     + tags
     + scenario_names
-    - strict
-    - autoformat
   - Support for multiline args
 
  - Configuration
@@ -88,6 +90,7 @@
       + backtrace
       + verbose
       + guess
+      + strict
 	+ YAML
   - Environment
 	+ Layering of options (Default -> Profile -> ENV -> Command line)
@@ -101,6 +104,7 @@
       - no-snippets
       - verbose
       - no-multiline
+      - backtrace
 	- profile
 	- progress
 	- rerun
@@ -112,6 +116,12 @@
 	- stdout
 	- file
 
+ - Main
+  - Options:
+    - dry-run
+    - autoformat
+    - format
+    - profile
 
  Scheme
 ==============================
@@ -140,11 +150,18 @@ Configuration -->  Run  <-- StepDefinitions
 
  Options
 ==============================
-  path, excludes => Features, StepDefinitions
-  language => Features
-  require, guess, dry-run => StepDefinitions
-  tags, scenario, autoformat, strict, backtrace => Run
-  format => Run (for choose Reporter(s))
-  out => Reporters (where)
-  profile => Configuration
-  [no-]color, no-source, no-snippets, quiet, verbose, no-multiline => Reporter 
+ require, guess => StepDefinitions
+ (args), exclude => Features, StepDefinitions
+ language => Features
+ out, [no-]color, no-multiline, no-source, no-snippets, backtrace => Reporter
+ format, profile, dry-run, autoformat => (main)
+ tags, scenario_names => Run
+ strict  => Context
+ verbose => Reporter, (...)
+ quiet => (alias for set of options)
+
+
+ After prototype tasks
+==============================
+
+ - Try to implement setting language per Features instance

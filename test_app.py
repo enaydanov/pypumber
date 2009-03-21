@@ -10,7 +10,7 @@ sys.path.append(make_path('lib'))
 from run import Run
 from cfg import *
 from multiplexer import Multiplexer
-from gherkin.languages import Languages
+
 
 cli_opts = CommandLineOptions()
 

@@ -6,52 +6,22 @@ from pprint import pprint
 def make_path(*path):
 	return os.path.abspath(os.path.join(os.path.dirname(__file__), *path))
 
-sys.path.append(make_path('lib'))
+sys.path.insert(0, make_path('lib'))
+
 
 class Reporter(object):
-    class Context(object):
-        def __init__(self, in_msg=None, out_msg=None):
-            self.in_msg = in_msg
-            self.out_msg = out_msg
-            
-        def __enter__(self):
-            if self.in_msg is not None:
-                print self.in_msg
+    def start_feature(self, filename, header, tags):
+        print header
         
-        def __exit__(self, type, value, traceback):
-            if self.out_msg is not None:
-                print self.out_msg
-
-    def skip_feature(self, filename, header, tags):
-        pass
-        
-    def skip_scenario(self, kw, i18n_kw, name, tags):
-        pass
-
-    def start(self, scenario_names, tags):
-        return self.Context()
-        
-    def feature(self, filename, header, tags):
-        return self.Context(in_msg=header)
+    def start_scenario(self, kw, i18n_kw, name, tags):
+        print ' ', i18n_kw, name, '# tags: ', repr(tags())
     
-    def before(self):
-        return self.Context()
-        
-    def background(self, kw):
-        return self.Context()
-        
-    def scenario(self, kw, i18n_kw, name, tags):
-        return self.Context(in_msg=' '.join([' ', i18n_kw, name, '# tags: ', repr(tags())]))
-        
-    def step(self, section, kw, i18n_kw, name):
-        return self.Context(in_msg=' '.join(['   ', i18n_kw, name]))
+    def start_step(self, section, kw, i18n_kw, name):
+        print '   ', i18n_kw, name
     
-    def afterStep(self):
-        return self.Context()
+    def pass_step(self):
+        print '[passed]'
     
-    def after(self):
-        return self.Context()
-
 
 class Rules(object):
     def print_this(self, attr, *args):
@@ -62,15 +32,22 @@ class Rules(object):
 
 
 if __name__ == '__main__':
-    from features import Features
     from cfg.options import Options
+
+    from features import Features
+    from step_definitions import StepDefinitions
+    from context import Context
     from run import Run
     
     features = Features()
+    step_definitions = StepDefinitions()
     reporter = Reporter()
-    step_definitions = Rules()
-    r = Run()
-    opts = Options(lang='en', path='examples/add.feature', tags=('@sometag', ))
-    opts(features, reporter, step_definitions, r)
+    context = Context(reporter)
+    #step_definitions = Rules()
+    run = Run()
+    opts = Options(strict=True, lang='en', require='examples', path='examples/add.feature', tags=('@sometag', ))
+    opts(features, reporter, step_definitions, run, context)
     
-    r(features, step_definitions, reporter)
+    step_definitions.load()
+    
+    run(features, step_definitions, context)

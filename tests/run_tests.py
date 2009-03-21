@@ -9,7 +9,7 @@ from find_files import *
 
 
 class TestRun(unittest.TestCase):
-
+    pass
 
 if __name__ == '__main__':
     unittest.main()
