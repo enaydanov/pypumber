@@ -6,11 +6,12 @@ from cfg.set_defaults import set_defaults
 from reporter import Reporter
 from colors import ColoredOutput, highlight_groups
 from step_definitions import MatchNotFound
+from run import SkipStep
 
 
-class Step(object):
-    def __init__(self, section, kw, i18n_kw, name, source_indent, matchobj=None, fn=None):
-        self.section, self.kw, self.i18n_kw, self.name, self.source_indent, self.matchobj, self.fn = section, kw, i18n_kw, name, source_indent, matchobj, fn
+class StepContext(object):
+    def __init__(self, section, step, matchobj=None, fn=None):
+        self.section, self.step, self.matchobj, self.fn = section, step, matchobj, fn
 
 
 class PrettyReporter(Reporter):
@@ -26,6 +27,8 @@ class PrettyReporter(Reporter):
         }
         self.scenario_indent = 2
         self.step_indent = 4
+        self.source_indent = 0
+        self.filename = None
         
     @property
     def color(self):
@@ -47,8 +50,13 @@ class PrettyReporter(Reporter):
     #~ def start_run(self, scenario_names, tags):
         #~ pass
 
+    def set_source_indent(self, steps, minimal):
+        lengths = [len(step['step_keyword'][1]) + len(step['name']) for step in steps]
+        lengths.append(minimal)
+        self.source_indent = max(lengths) + 2
+
     def pass_run(self):
-        formatted = ['\n']
+        formatted = []
         formatted.append('%d scenario%s\n' % (self.counts['scenarios'], 's' if self.counts['scenarios'] != 1 else ''))
         for s in ['passed', 'failed', 'skipped', 'pending']:
             if self.counts[s]:
@@ -62,28 +70,33 @@ class PrettyReporter(Reporter):
         self.pass_run()
 
     # Handlers for reporting of feature execution.
-    #~ def skip_feature(self, filename, header, tags):
+    #~ def skip_feature(self, filename, feature):
         #~ pass
         
-    def start_feature(self, filename, header, tags):
-        header = header.split('\n', 1)
+    def start_feature(self, filename, feature):
+        # TODO: print tags
+        self.filename = filename
+        header = feature.header.split('\n', 1)
         formatted = [header[0]]
         if self.source:
             formatted.append('  ')
             formatted.append(self.color_scheme.comment('# ' + os.path.relpath(filename)))
-        formatted.extend(['\n', header[1], '\n'])
+        formatted.append('\n')
+        if len(header) == 2:
+            formatted.append(header[1])
+            formatted.append('\n')
         with self.__out as out:
             out.write(''.join(formatted))
 
-    #~ def pass_feature(self):
-        #~ pass
+    def pass_feature(self):
+        self.__out.write('\n')
     
-    #~ def fail_feature(self, type, value, traceback):
-        #~ pass
+    def fail_feature(self, type, value, traceback):
+        self.pass_feature()
 
 
     # Handlers for reporting of steps execution.
-    #~ def start_background(self, i18n_kw):
+    #~ def start_background(self, background):
         #~ pass
 
     #~ def pass_background(self):
@@ -93,11 +106,21 @@ class PrettyReporter(Reporter):
         #~ pass
 
     # Handlers for reporting of steps execution.
-    #~ def skip_scenario(self, kw, i18n_kw, name, tags):
+    #~ def skip_scenario(self, scenario):
         #~ pass
     
-    def start_scenario(self, kw, i18n_kw, name, tags):
-        formatted = [' ' * self.scenario_indent, self.color_scheme.passed(i18n_kw + ' ' + name)]
+    def start_scenario(self, scenario):
+        str_len = len(scenario[1].scenario_keyword[0]) + len(scenario[1].name)
+        self.set_source_indent(scenario[1].steps, str_len)
+        formatted = [
+            ' ' * self.scenario_indent, 
+            self.color_scheme.passed('%s %s' % (scenario[1].scenario_keyword[0], scenario[1].name)),
+        ]
+        if self.source:
+            formatted.append(' ' * (self.source_indent - str_len + self.step_indent - self.scenario_indent))
+            formatted.append(self.color_scheme.comment(
+                '# %s:%d' % (os.path.relpath(self.filename), scenario[1].scenario_keyword[1])
+            ))
         formatted.append('\n')
         with self.__out as out:
             out.write(''.join(formatted))
@@ -110,42 +133,51 @@ class PrettyReporter(Reporter):
         self.pass_scenario()
 
     # Handlers for reporting of steps execution.
-    def start_step(self, section, kw, i18n_kw, name, source_indent):
-        self.last_step = Step(section, kw, i18n_kw, name, source_indent)
+    def start_step(self, section, step):
+        self.last_step = StepContext(section, step)
         return self.last_step
     
-    def pass_step(self):
-        formatted = [' ' * self.step_indent, self.color_scheme.passed(self.last_step.i18n_kw), ' ']
-        formatted.append(highlight_groups(
-            self.last_step.matchobj, 
-            self.color_scheme.passed, 
-            self.color_scheme.passed_param
-        ))
+    def format_last_step(self, regular, highlight=None):
+        kw = self.last_step.step.step_keyword[1]
+        lineno = self.last_step.step.step_keyword[2]
+        fn = self.last_step.fn
+        name = self.last_step.step.name
+        
+        formatted = [' ' * self.step_indent, regular(kw), ' ']
+        formatted.append(
+            regular(name) 
+                if highlight is None else 
+            highlight_groups(
+                self.last_step.matchobj, 
+                regular, 
+                highlight
+            )
+        )
         if self.source:
-            formatted.append(' ' * self.last_step.source_indent)
+            if fn is None:
+                file_line = (os.path.relpath(self.filename), lineno)
+            else:
+                file_line = (os.path.relpath(inspect.getfile(fn)), inspect.getsourcelines(fn)[1])
+            formatted.append(' ' * (self.source_indent - len(kw) - len(name)))
             formatted.append(self.color_scheme.comment(
-                '# %s:%d' % (os.path.relpath(inspect.getfile(self.last_step.fn)), inspect.getsourcelines(self.last_step.fn)[1])
+                '# %s:%d' % file_line
             ))
         formatted.append('\n')
         
         with self.__out as out:
             out.write(''.join(formatted))
+    
+    def pass_step(self):
+        self.format_last_step(self.color_scheme.passed, self.color_scheme.passed_param)
         self.counts['passed'] += 1
     
     def fail_step(self, type, value, traceback):
-        formatted = [' ' * self.step_indent]
-        if issubclass(type, MatchNotFound):
-            formatted.append(self.color_scheme.undefined(self.last_step.i18n_kw + ' ' + self.last_step.name))
+        if issubclass(type, SkipStep):
+            self.format_last_step(self.color_scheme.skipped, self.color_scheme.skipped_param)
+            self.counts['skipped'] += 1
+        elif issubclass(type, MatchNotFound):
+            self.format_last_step(self.color_scheme.undefined)
             self.counts['pending'] += 1
         else:
-            formatted.append(highlight_groups(
-                self.last_step.matchobj, 
-                self.color_scheme.failed, 
-                self.color_scheme.failed_param
-            ))
-        formatted.append('\n')
-    
-        with self.__out as out:
-            out.write(''.join(formatted))
-        
-        self.counts['failed'] += 1
+            self.format_last_step(self.color_scheme.failed, self.color_scheme.failed_param)
+            self.counts['failed'] += 1

@@ -7,6 +7,7 @@ class Context(object):
         set_defaults(self, 'strict')
         self.reporter = reporter
         self._call_stack = []
+        self.skip_following_steps = False
     
     def _register_call(self, attr, *args, **kwargs):
         self._call_stack.append((attr, args, kwargs))
@@ -29,12 +30,20 @@ class Context(object):
     def __exit__(self, type, value, traceback):
         if self._call_stack:
             attr, _, _= self._call_stack.pop()
+            
+            # If we go out of scenario we will reset step skipping.
+            if attr == 'scenario': # TODO: 'background', 'scenario_outline'?
+                self.skip_following_steps = False
+                
             if type is None:
                 # All fine. Just call pass function.
                 attr = 'pass_%s' % attr
                 if hasattr(self.reporter, attr):
                     getattr(self.reporter, attr)()
             else:
+                # If step failed for some reason we need to skip all following steps in scenario.
+                if attr == 'step':
+                    self.skip_following_steps = True
                 attr = 'fail_%s' % attr
                 if hasattr(self.reporter, attr):
                     getattr(self.reporter, attr)(type, value, traceback)

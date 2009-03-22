@@ -108,6 +108,70 @@ class TestSourceType(unittest.TestCase):
         self.assert_(hasattr(source, 'read'))
         self.assertEqual(source.read(), "file")
 
-		
+MULTILINE_TEXT = """Some
+multiline
+text
+"""
+
+class TestLineno(unittest.TestCase):
+    def setUp(self):
+        self.s = Source(MULTILINE_TEXT, SourceType.STRING)
+    
+    def tearDown(self):
+        del(self.s)
+    
+    def test_000_at_begin_of_string(self):
+        self.assertEqual(self.s.lineno(), 1)
+    
+    def test_001_in_first_line(self):
+        self.s.cur = 2
+        self.assertEqual(self.s.lineno(), 1)
+
+    def test_002_at_the_end_of_first_line(self):
+        self.s.cur = 4
+        self.assertEqual(self.s.lineno(), 1)
+
+    def test_003_at_the_begin_of_second_line(self):
+        self.s.cur = 5
+        self.assertEqual(self.s.lineno(), 2)
+
+    def test_004_in_second_line(self):
+        self.s.cur = 10
+        self.assertEqual(self.s.lineno(), 2)
+
+    def test_005_in_third_line(self):
+        self.s.cur = 17
+        self.assertEqual(self.s.lineno(), 3)
+
+    def test_006_at_the_end_of_third_line(self):
+        self.s.cur = len(MULTILINE_TEXT) - 1
+        self.assertEqual(self.s.lineno(), 3)
+
+    def test_007_the_end(self):
+        self.s.cur = len(MULTILINE_TEXT)
+        self.assertEqual(self.s.lineno(), 4)
+
+    def test_008_in_first_line(self):
+        self.assertEqual(self.s.lineno(2), 1)
+
+    def test_009_at_the_end_of_first_line(self):
+        self.assertEqual(self.s.lineno(4), 1)
+
+    def test_010_at_the_begin_of_second_line(self):
+        self.assertEqual(self.s.lineno(5), 2)
+
+    def test_011_in_second_line(self):
+        self.assertEqual(self.s.lineno(10), 2)
+
+    def test_012_in_third_line(self):
+        self.assertEqual(self.s.lineno(17), 3)
+
+    def test_013_at_the_end_of_third_line(self):
+        self.assertEqual(self.s.lineno(len(MULTILINE_TEXT) - 1), 3)
+
+    def test_014_the_end(self):
+        self.assertEqual(self.s.lineno(len(MULTILINE_TEXT)), 4)
+
+
 if __name__ == '__main__':
     unittest.main()

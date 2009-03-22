@@ -62,6 +62,11 @@ class Source(object):
             self.__cur.cur = value
         else:
             self.__cur = value
+    
+    def lineno(self, pos=None):
+        if pos is None:
+            pos = self.cur
+        return self.text.count('\n', 0, pos) + 1
 
     def substr(self, length):
         """ Returns substring from current position with length `length' """

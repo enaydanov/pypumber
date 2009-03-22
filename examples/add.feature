@@ -15,6 +15,6 @@ Feature: Addition
   Scenario: Add another two numbers
     Given I visit the calculator page
     And I fill in '20' for 'first'
-    And I fill in '30' for 'second'
+    And I fill in '666' for 'second'
     When I press 'Substract'
     Then I should see 'Answer: -10'

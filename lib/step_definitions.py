@@ -214,12 +214,14 @@ class StepDefinitions(object):
         """Load step definitions from configured paths."""
         import sys, decorators
 
-        # Set up paths.
+        # TODO: load first from 'support' dir.
+        
+        # Set up paths. 
         if self.require:
             paths = self.require
             excludes = None
         else:
-            paths = self.path
+            paths = [path if os.path.isdir(path) else os.path.dirname(path) for path in self.path]
             excludes = self.excludes
 
         # Set up decorators.

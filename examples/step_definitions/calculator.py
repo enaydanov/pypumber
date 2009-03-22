@@ -25,6 +25,7 @@ def _():
 
 @Given(r"I fill in '(\d+)' for '(\w+)'")
 def _(x, reg):
+    assert int(x) != 666
     instance.put(reg, int(x))
     
 @When(r"I press 'Add'")

@@ -20,7 +20,7 @@ def find_files(paths, pattern='*', excludes=None):
     
     rv = []
     for path in (p for p in paths if excludes_filter(p)):
-        if os.path.isfile(path):
+        if os.path.isfile(path) and fnmatch.fnmatch(os.path.basename(path), pattern):
             rv.append(os.path.abspath(path))
             continue
         for root, dirs, files in os.walk(path):

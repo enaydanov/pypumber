@@ -99,7 +99,7 @@
  - Reporters
 	- pretty
     - Options:
-      - [no-]color
+      + [no-]color
       - no-source
       - no-snippets
       - verbose

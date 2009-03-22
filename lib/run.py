@@ -6,6 +6,8 @@ from pprint import pprint
 class ButFailed(Exception):
     pass
 
+class SkipStep(Exception):
+    pass
 
 class Run(object):
     def __init__(self):
@@ -50,11 +52,13 @@ class Run(object):
             else:
                 if current_kw is None:
                     raise SyntaxError()
-            with context.step(current_kw, kw, step.step_keyword[1], step.name, step.source_indent) as step:
+            with context.step(current_kw, step) as step_context:
                 match = getattr(step_definitions, current_kw)(step.name)
-                if step is not None:
-                    step.matchobj = match.matchobj
-                    step.fn = match.fn
+                if step_context is not None:
+                    step_context.matchobj = match.matchobj
+                    step_context.fn = match.fn
+                if context.skip_following_steps:
+                    raise SkipStep()
                 if kw == 'but':
                     try:
                         match()
@@ -75,24 +79,24 @@ class Run(object):
             for filename, feat in features:
                 # Skip complete feature if it doesn't have right tags.
                 if self.skip_feature_by_tags(feat.tags):
-                    context.skip_feature(filename, feat.header, feat.tags)
+                    context.skip_feature(filename, feat)
                     continue
                 
                 # Start feature execution.
-                with context.feature(filename, feat.header, feat.tags):
+                with context.feature(filename, feat):
                     for sc in feat.feature_elements:
                         # Skip scenario if it doesn't have right name or tags.
                         if self.skip_scenario_by_name(sc[1].name) or self.skip_scenario_by_tags(sc[1].tags):
-                            context.skip_scenario(sc[0], sc[1].scenario_keyword, sc[1].name, sc[1].tags)
+                            context.skip_scenario(sc)
                             continue
 
-                        with context.scenario(sc[0], sc[1].scenario_keyword, sc[1].name, sc[1].tags):
+                        with context.scenario(sc):
                             # Run Before hooks.
                             step_definitions.before()
                             
                             # If feature has Background -- run it.
                             if 'background' in feat:
-                                with context.background(feat.background.background_keyword):
+                                with context.background(feat.background):
                                     self._run_steps(feat.background.steps,  step_definitions, context)
                             
                             # Run scenario or scenario outline.
