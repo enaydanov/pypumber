@@ -46,13 +46,26 @@ def _get_func_args(f):
     return (names, arg_name, kw_name, argcount) 
 
 
-_step_keywords = ['given', 'when', 'then']
-_hooks = ['before', 'after', 'afterStep']
+class Match(object):
+    def __init__(self, fn, args, kwargs, matchobj):
+        self.fn, self.args, self.kwargs, self.matchobj = fn, args, kwargs, matchobj
+    
+    def __call__(self):
+        return self.fn(*self.args, **self.kwargs)
+
+_DUMMY_MATCH = Match(lambda: None, [], {}, None)
+
+
+_STEP_KEYWORDS = ['given', 'when', 'then']
+_HOOKS = ['before', 'after', 'afterStep']
 
 class DryRun(object):
     def __init__(self):
-        for kw in _step_keywords:
-            setattr(self, kw, lambda *args: None)
+        for kw in _STEP_KEYWORDS:
+            setattr(self, kw, lambda *args: _DUMMY_MATCH)
+        
+        for hook in _HOOKS:
+            setattr(self, hook, lambda: None)
 
     def load():
         pass
@@ -69,7 +82,7 @@ class StepDefinitions(object):
             return tmp
         
         # Create mappings, decorators and runners for step definitions.
-        for kw in _step_keywords:
+        for kw in _STEP_KEYWORDS:
             # Create map.
             map_name = '_map_%s' % kw
             setattr(self, map_name, {})
@@ -80,7 +93,7 @@ class StepDefinitions(object):
             setattr(self, kw, first_arg_closure(map, self.__find_and_run))
         
         # Create multiplexers and decorators for hooks.
-        for hook in _hooks:
+        for hook in _HOOKS:
             setattr(self, hook, Multiplexer())
             setattr(self, hook.capitalize(), first_arg_closure(getattr(self, hook), self.__add_hook))
     
@@ -194,7 +207,7 @@ class StepDefinitions(object):
         if len(anon_groups):
             values.extend(matchobj.group(*anon_groups))
 
-        return func(*values, **kw_args)
+        return Match(func, values, kw_args, matchobj)
 
 
     def load(self):
@@ -210,7 +223,7 @@ class StepDefinitions(object):
             excludes = self.excludes
 
         # Set up decorators.
-        for kw in _step_keywords + _hooks:
+        for kw in _STEP_KEYWORDS + _HOOKS:
             deco = kw.capitalize()
             setattr(decorators, deco, getattr(self, deco))
         

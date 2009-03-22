@@ -30,6 +30,9 @@ class Reporter(object):
     
     def fail_method2(self, type, value, traceback):
         self.result2 = "failed: %s: %s" % (type.__name__, value)
+    
+    def start_method_with_value(self, *args):
+        return args
 
 
 
@@ -159,7 +162,16 @@ class TestContext(unittest.TestCase):
     
     def test_020_skip_undefined(self):
         self.assertEqual(self.c.skip_blah(), None)
-        
+    
+    def test_021_return_none(self):
+        with self.c.method() as m:
+            rv = m
+        self.assertEqual(rv, None)
+    
+    def test_022_return_value(self):
+        with self.c.method_with_value('somevalue') as m:
+            rv = m
+        self.assertEqual(rv, ('somevalue', ))
 
 
 class TestContextWithMultiplexer(unittest.TestCase):
@@ -240,6 +252,16 @@ class TestContextWithMultiplexer(unittest.TestCase):
 
     def test_012_skip_undefined(self):
         self.assertEqual(self.c.skip_blah(), None)
+
+    def test_013_return_none(self):
+        with self.c.method() as m:
+            rv = m
+        self.assertEqual(rv, [None, None])
+    
+    def test_014_return_value(self):
+        with self.c.method_with_value('somevalue') as m:
+            rv = m
+        self.assertEqual(rv, [('somevalue', ), ('somevalue', )])
 
 
 if __name__ == '__main__':

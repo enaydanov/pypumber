@@ -24,7 +24,7 @@ class Context(object):
             attr, args, kwargs = self._call_stack[-1]
             attr = 'start_%s' % attr
             if hasattr(self.reporter, attr):
-                getattr(self.reporter, attr)(*args, **kwargs)
+                return getattr(self.reporter, attr)(*args, **kwargs)
     
     def __exit__(self, type, value, traceback):
         if self._call_stack:

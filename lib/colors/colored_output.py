@@ -39,20 +39,20 @@ if sys.platform == 'win32':
             '2':  (0x00, 0xF7), # dark foreground
             '5':  (0x80, 0x7F), # bright background
             '30': (0x00, 0xF8), # black foreground
-            '31': (0x01, 0xF8), # red foreground 
+            '31': (0x04, 0xF8), # red foreground 
             '32': (0x02, 0xF8), # green foreground
-            '33': (0x03, 0xF8), # yellow foreground
-            '34': (0x04, 0xF8), # blue foreground 
+            '33': (0x06, 0xF8), # yellow foreground
+            '34': (0x01, 0xF8), # blue foreground 
             '35': (0x05, 0xF8), # magenta foreground
-            '36': (0x06, 0xF8), # cyan foreground
+            '36': (0x03, 0xF8), # cyan foreground
             '37': (0x07, 0xF8), # white foreground
             '40': (0x00, 0x8F), # black background
-            '41': (0x10, 0x8F), # red background
+            '41': (0x40, 0x8F), # red background
             '42': (0x20, 0x8F), # green background
-            '43': (0x30, 0x8F), # yellow background
-            '44': (0x40, 0x8F), # blue background
+            '43': (0x60, 0x8F), # yellow background
+            '44': (0x20, 0x8F), # blue background
             '45': (0x50, 0x8F), # magenta background
-            '46': (0x60, 0x8F), # cyan background
+            '46': (0x30, 0x8F), # cyan background
             '47': (0x70, 0x8F), # white background
         }
         WIN_COLORS_MAP = collections.defaultdict(lambda: (0x00, 0xFF), WIN_COLORS_MAP)

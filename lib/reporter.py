@@ -56,7 +56,7 @@ class Reporter(object):
 
     # Handlers for reporting of steps execution.
     #~ def start_step(self, section, kw, i18n_kw, name):
-        #~ pass
+        #~ return StepObject()
     
     #~ def pass_step(self):
         #~ pass

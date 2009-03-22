@@ -1,8 +1,11 @@
-#!/usr/bin/env python
+#! /usr/bin/env python
 
 from cfg.set_defaults import set_defaults
-
 from pprint import pprint
+
+class ButFailed(Exception):
+    pass
+
 
 class Run(object):
     def __init__(self):
@@ -47,8 +50,20 @@ class Run(object):
             else:
                 if current_kw is None:
                     raise SyntaxError()
-            with context.step(current_kw, kw, step.step_keyword[1], step.name):
-                getattr(step_definitions, current_kw)(step.name)
+            with context.step(current_kw, kw, step.step_keyword[1], step.name, step.source_indent) as step:
+                match = getattr(step_definitions, current_kw)(step.name)
+                if step is not None:
+                    step.matchobj = match.matchobj
+                    step.fn = match.fn
+                if kw == 'but':
+                    try:
+                        match()
+                    except: # Do we need to catch all other exceptions? 
+                        pass
+                    else:
+                        raise ButFailed()
+                else:
+                    match()
             
             step_definitions.afterStep()
     

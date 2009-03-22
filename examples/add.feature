@@ -16,5 +16,5 @@ Feature: Addition
     Given I visit the calculator page
     And I fill in '20' for 'first'
     And I fill in '30' for 'second'
-    When I press 'Add'
-    Then I should see 'Answer: 50'
+    When I press 'Substract'
+    Then I should see 'Answer: -10'

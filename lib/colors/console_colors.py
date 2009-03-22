@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-import sys
-
 ATTRIBUTES = {
     'reset':  0,
     'bold':  1,
@@ -36,21 +34,21 @@ def color(*args):
     return tuple([ATTRIBUTES[a] for a in args])
 
 DEFAULT_COLORS = {
-    'undefined':  	color('yellow'),
-    'pending': 	color('yellow'),
-    'pending_param': 	color('yellow', 'bold'),
-    'failed': 	color('red'),
-    'failed_param': 	color('red', 'bold'),
-    'passed': 	color('green'),
-    'passed_param': 	color('green', 'bold'),
-    'skipped': color('cyan'),
-    'skipped_param': color('cyan', 'bold'),
-    'comment': color('white', 'bold'),
-    'tag': color('cyan'),
+    'undefined':  	color('reset', 'yellow'),
+    'pending': 	color('reset', 'yellow'),
+    'pending_param': 	color('reset', 'yellow', 'bold'),
+    'failed': 	color('reset', 'red'),
+    'failed_param': 	color('reset', 'red', 'bold'),
+    'passed': 	color('reset', 'green'),
+    'passed_param': 	color('reset', 'green', 'bold'),
+    'skipped': color('reset', 'cyan'),
+    'skipped_param': color('reset', 'cyan', 'bold'),
+    'comment': color('reset', 'black', 'bold'),
+    'tag': color('reset', 'cyan'),
 }
 
 def color_to_seq(c):
-    return '\033[%sm' % ';'.join(['%d' % attr in c])
+    return '\033[%sm' % ';'.join(['%d' % attr for attr in c])
 
 def color_string(color, str):
     return ''.join([color_to_seq(color), str, '\033[m'])

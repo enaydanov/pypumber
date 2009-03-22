@@ -103,32 +103,32 @@ class TestStepDefinitions(unittest.TestCase):
         @self.r.Given("some rule")
         def tmp():
             return 'tmp'
-        self.assertEqual(self.r.given("some rule"), 'tmp')
+        self.assertEqual(self.r.given("some rule")(), 'tmp')
 
     def test_002_given_rule_with_named_args(self):
         @self.r.Given(r'(?P<a>\d+) \+ (?P<b>\d+)')
         def sum(a, b):
             return int(a) + int(b)
-        self.assertEqual(self.r.given("12 + 15"), 27)
+        self.assertEqual(self.r.given("12 + 15")(), 27)
 
     def test_003_given_rule_with_nonamed_args(self):
         @self.r.Given(r'(\d+) - (\d+)', 'b', 'a')
         def sum(a, b):
             return int(a) - int(b)
-        self.assertEqual(self.r.given("10 - 15"), 5)
+        self.assertEqual(self.r.given("10 - 15")(), 5)
         
     def test_004_given_rule_with_mixed_args(self):
         @self.r.Given(r'(?P<a>\d+) - (\d+)', 'b')
         def sum(a, b):
             return int(a) - int(b)
-        self.assertEqual(self.r.given("10 - 15"), -5)
+        self.assertEqual(self.r.given("10 - 15")(), -5)
 
     def test_005_given_rule_optional_arg(self):
         @self.r.Given(r'some optional( arg)?', 'arg')
         def tmp(arg):
             return arg
-        self.assertEqual(self.r.given("some optional arg"), " arg")
-        self.assertEqual(self.r.given("some optional"), None)
+        self.assertEqual(self.r.given("some optional arg")(), " arg")
+        self.assertEqual(self.r.given("some optional")(), None)
         
     def test_006_given_rule_more_args(self):
         @self.r.Given(r'(rule)', 'a', 'b', 'c')
@@ -140,31 +140,31 @@ class TestStepDefinitions(unittest.TestCase):
         @self.r.Given(r'(rule)')
         def tmp(a):
             return a
-        self.assertEqual(self.r.given("rule"), "rule")
+        self.assertEqual(self.r.given("rule")(), "rule")
 
     def test_008_given_rule_list_arg(self):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)', 'a', 'b', 'c')
         def tmp(*arg):
             return sum([int(a) for a in arg])
-        self.assertRaises(TypeError, self.r.given, "1 + 2 + 3")
+        self.assertRaises(TypeError, self.r.given("1 + 2 + 3"))
 
     def test_009_given_rule_default_args(self):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)')
         def tmp(a, b, c):
             return int(a) + int(b) + int(c)
-        self.assertEqual(self.r.given("1 + 2 + 3"), 6)
+        self.assertEqual(self.r.given("1 + 2 + 3")(), 6)
 
     def test_010_given_rule_default_list_args(self):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)')
         def tmp(*arg):
             return sum([int(a) for a in arg])
-        self.assertEqual(self.r.given("1 + 2 + 3"), 6)
+        self.assertEqual(self.r.given("1 + 2 + 3")(), 6)
 
     def test_011_given_rule_kw_arg(self):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)', 'a', 'b', 'c')
         def tmp(**arg):
             return sum([int(a) for a in arg.values()])
-        self.assertEqual(self.r.given("1 + 2 + 3"), 6)
+        self.assertEqual(self.r.given("1 + 2 + 3")(), 6)
     
     def test_008_given_rule_match_not_found(self):
         self.assertRaises(MatchNotFound, self.r.given, "10 - 5")
@@ -178,7 +178,7 @@ class TestStepDefinitions(unittest.TestCase):
         def sum2(a, b):
             return int(a) + int(b)
         
-        self.assertEqual(self.r.given("10 - 5"), 15)
+        self.assertEqual(self.r.given("10 - 5")(), 15)
 
     def test_010_given_rule_ambiguous(self):
         @self.r.Given(r'(\d+) - (\d+)', 'b', 'a')
@@ -198,23 +198,23 @@ class TestStepDefinitions(unittest.TestCase):
     def test_020_load__file(self):
         self.r.path.append(os.path.join(step_definitions_path, 'example_import.py'))
         self.r.load()
-        self.assertEqual(self.r.given("some string"), "tmp")
+        self.assertEqual(self.r.given("some string")(), "tmp")
 
     def test_021_load__dir(self):
         self.r.path.append(step_definitions_path)
         self.r.load()
-        self.assertEqual(self.r.given("some string"), "tmp")
+        self.assertEqual(self.r.given("some string")(), "tmp")
 
     def test_022_load__multiple(self):
         opt = Options(path=step_definitions_path)
         opt(self.r)
         self.r.load()
-        self.assertEqual(self.r.given("some string"), "tmp")
+        self.assertEqual(self.r.given("some string")(), "tmp")
         r = StepDefinitions()
         opt(r)
         r.load()
-        self.assertEqual(r.given("some string"), "tmp")
-        self.assertEqual(self.r.given("some string"), "tmp")
+        self.assertEqual(r.given("some string")(), "tmp")
+        self.assertEqual(self.r.given("some string")(), "tmp")
    
 
 if __name__ == '__main__':

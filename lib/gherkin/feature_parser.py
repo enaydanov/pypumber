@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import types
+import types, itertools, sys
 from peg import PEGParser
 from feature_grammar import feature
 
@@ -40,6 +40,20 @@ class FeatureParser(PEGParser):
     
     def tags(self, subtree):
         return [t for _, t in subtree]
+    
+    def steps(self, subtree):
+        """Handler for 'steps' non-terminal.
+        
+        Calculate source_indent for steps in out scenario.
+        Each step is list of dicts: [{'step_keyword: (..., ...), 'name': ..., ...), ...]
+        We need to calculate sum of lenght of two first.
+        """
+        lengths = [len(step['step_keyword'][1]) + len(step['name']) for step in subtree]
+        max_length = max(lengths)
+        assert len(subtree) == len(lengths)
+        for step, indent in itertools.izip(subtree, (max_length - l + 2 for l in lengths)):
+            step['source_indent'] = indent
+        return subtree
 
 
 if __name__ == '__main__':

@@ -3,7 +3,7 @@
 _accum_attrs = ['scenario_names', 'path', 'excludes', 'require']
 _single_value_attrs = ['tags', 'strict', 'autoformat', 'backtrace', 
     'dry_run', 'guess', 'verbose', 'color', 'multiline', 'source', 
-    'snippets']
+    'snippets', 'color_scheme']
 
 def set_defaults(obj, *attrs):
     for attr in attrs:

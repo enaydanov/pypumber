@@ -123,6 +123,9 @@
     - format
     - profile
 
+skip steps
+
+
  Scheme
 ==============================
 
@@ -165,3 +168,5 @@ Configuration -->  Run  <-- StepDefinitions
 ==============================
 
  - Try to implement setting language per Features instance
+ - Add default values for hooks decorators
+ - Change closures to partial
