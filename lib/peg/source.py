@@ -49,19 +49,18 @@ class Source(object):
             self.text = SourceType.opener(source_type)(source).read()
             self.__cur = 0
    
-    @property
-    def cur(self):
+    # 'cur' property.
+    def get_cur(self):
         if type(self.__cur) == type(self):
             return self.__cur.cur
         else:
             return self.__cur
-
-    @cur.setter
-    def cur(self, value):
+    def set_cur(self, value):
         if type(self.__cur) == type(self):
             self.__cur.cur = value
         else:
             self.__cur = value
+    cur = property(get_cur, set_cur)
     
     def lineno(self, pos=None):
         if pos is None:

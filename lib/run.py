@@ -1,17 +1,14 @@
 #! /usr/bin/env python
 
 from cfg.set_defaults import set_defaults
-from pprint import pprint
+from step_definitions import MatchNotFound
 
 class ButFailed(Exception):
     pass
 
-class SkipStep(Exception):
-    pass
-
 class Run(object):
     def __init__(self):
-        set_defaults(self, 'scenario_names', 'tags')
+        set_defaults(self, 'scenario_names', 'tags', 'strict')
 
     def skip_feature_by_tags(self, tags):
         self._run_whole_feature = False
@@ -42,67 +39,112 @@ class Run(object):
     def skip_scenario_by_name(self, name):
         return (self.scenario_names != []) and (name not in self.scenario_names)
 
-
-    def _run_steps(self, steps, step_definitions, context):
-        current_kw = None
+    def _run_steps(self, steps, step_definitions, reporter):
+        current_kw, skip_following_steps = None, False
         for step in steps:
             kw = step.step_keyword[0]
             if kw in ['given', 'when', 'then']:
                 current_kw = kw
             else:
+                # Raise SyntaxError if steps not start with Given, When or Then
                 if current_kw is None:
                     raise SyntaxError()
-            with context.step(current_kw, step) as step_context:
-                match = getattr(step_definitions, current_kw)(step.name)
-                if step_context is not None:
-                    step_context.matchobj = match.matchobj
-                    step_context.fn = match.fn
-                if context.skip_following_steps:
-                    raise SkipStep()
-                if kw == 'but':
-                    try:
-                        match()
-                    except: # Do we need to catch all other exceptions? 
-                        pass
-                    else:
-                        raise ButFailed()
-                else:
-                    match()
             
-            step_definitions.afterStep()
-    
-    def _run_outline_steps(self, steps, step_definitions, context):
-        self._run_steps(steps, step_definitions, context)
-
-    def __call__(self, features, step_definitions, context):
-        with context.run(self.scenario_names, self.tags):
-            for filename, feat in features:
-                # Skip complete feature if it doesn't have right tags.
-                if self.skip_feature_by_tags(feat.tags):
-                    context.skip_feature(filename, feat)
+            # Begin step execution.
+            reporter.start_step(current_kw, step)
+            
+            # Try to find step definition.
+            try:
+                match = getattr(step_definitions, current_kw)(step.name)
+                reporter.step_definition(match)
+            except MatchNotFound:
+                reporter.undefined_step()
+                
+                # Skip execution of following steps if '--strict' option passed.
+                if self.strict:
+                    skip_following_steps = True
+            else:
+                # Skip execution of step in two cases:
+                #   1) Previously, there is some failed step, or
+                #   2) Some undefined step and option '--strict' passed.
+                if skip_following_steps:
+                    reporter.skip_step()
                     continue
                 
-                # Start feature execution.
-                with context.feature(filename, feat):
-                    for sc in feat.feature_elements:
-                        # Skip scenario if it doesn't have right name or tags.
-                        if self.skip_scenario_by_name(sc[1].name) or self.skip_scenario_by_tags(sc[1].tags):
-                            context.skip_scenario(sc)
-                            continue
+                but = (kw == 'but')
+                
+                # Run step definition.
+                try:
+                    match()
+                    
+                    # If all fine, but we are running But step then raise ButFailed exception.
+                    if but:
+                        raise ButFailed(step.name)
+                except Exception, e:
+                    if but and not issubclass(e, ButFailed):  # But step passed.
+                        reporter.pass_step()
+                    else:
+                        reporter.fail_step(e)
+                        skip_following_steps = True
+                else:
+                    reporter.pass_step()
+            
+            # Run AfterStep hooks.
+            try:
+                step_definitions.afterStep()
+            except:
+                pass
 
-                        with context.scenario(sc):
-                            # Run Before hooks.
-                            step_definitions.before()
-                            
-                            # If feature has Background -- run it.
-                            if 'background' in feat:
-                                with context.background(feat.background):
-                                    self._run_steps(feat.background.steps,  step_definitions, context)
-                            
-                            # Run scenario or scenario outline.
-                            (self._run_steps if sc[0] == 'scenario' \
-                                else self._run_outline_steps)(sc[1].steps, step_definitions, context)
-                       
-                            # Run After hooks.
-                            step_definitions.after()
-    # end of def __call__(...)
+    def _run_outline_steps(*args):
+        self._run_steps(*args)
+
+    def __call__(self, features, step_definitions, reporter):
+        reporter.start_run(self.scenario_names, self.tags)
+        for filename, feat in features:
+            # Skip complete feature if it doesn't match tags.
+            if self.skip_feature_by_tags(feat.tags):
+                reporter.skip_feature(filename, feat)
+                continue
+            
+            # Start feature execution.
+            reporter.start_feature(filename, feat)
+            for sc in feat.feature_elements:
+
+                # Skip scenario if it doesn't match names or tags.
+                if self.skip_scenario_by_name(sc[1].name) or self.skip_scenario_by_tags(sc[1].tags):
+                    reporter.skip_scenario(sc)
+                    continue
+                
+                # Start scenario execution.
+                reporter.start_scenario(sc)
+                
+                # Run Before hooks.
+                try:
+                    step_definitions.before()
+                except:
+                    pass
+                
+                # If feature has background then run it.
+                if 'background' in feat:
+                    reporter.start_background()
+                    self._run_steps(feat.background.steps,  step_definitions, reporter)
+                    reporter.end_background()
+
+                # Run scenario or scenario outline.
+                (self._run_steps if sc[0] == 'scenario' \
+                    else self._run_outline_steps)(sc[1].steps, step_definitions, reporter)
+           
+                # Run After hooks.
+                try:
+                    step_definitions.after()
+                except:
+                    pass
+                
+                # Scenario finished.
+                reporter.end_scenario()
+            
+            # Feature finished.
+            reporter.end_feature()
+        
+        # Run finished.
+        reporter.end_run()

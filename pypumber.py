@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+from __future__ import with_statement
+
 import sys, os
 
 def make_path(*path):
@@ -15,7 +17,6 @@ from cfg import *
 from multiplexer import Multiplexer
 from features import Features
 from step_definitions import StepDefinitions
-from context import Context
 
 #
 # Collect options from different sources:
@@ -41,7 +42,6 @@ if cli_opts.profile:
 #
 reporter = PrettyReporter()
 reporter.color_scheme = ColorScheme(DEFAULT_COLORS, console_color_string)
-context = Context(reporter)
 
 # Create main app objects.
 features = Features()
@@ -49,7 +49,7 @@ step_definitions = StepDefinitions()
 run = Run()
 
 # Apply options.
-options(reporter, context, features,  step_definitions, run)
+options(reporter, features,  step_definitions, run)
 
 step_definitions.load()
-run(features, step_definitions, context)
+run(features, step_definitions, reporter)

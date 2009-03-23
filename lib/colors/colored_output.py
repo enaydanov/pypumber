@@ -71,28 +71,25 @@ class ColoredOutput(object):
         self.skip_colors = COLORS_NOT_SUPPORTED
         self.output_stream = output_stream
     
-    @property
-    def skip_colors(self):
+    # 'skip_color' property.
+    def get_skip_colors(self):
         return self.__skip_colors
-    
-    @skip_colors.setter
-    def skip_colors(self, value):
+    def set_skip_colors(self, value):
         self.__skip_colors = value
         if value:
             setattr(self, 'write', self.write_no_colors)
         else:
             setattr(self, 'write', self.write_with_colors)
+    skip_colors = property(get_skip_colors, set_skip_colors)
 
     def write_no_colors(self, data):
         self.__output_stream.write(COLOR_RE.sub('', data))
 
-    @property
-    def output_stream(self):
+    def get_output_stream(self):
         return self.__output_stream
 
     if sys.platform == 'win32':
-        @output_stream.setter
-        def output_stream(self, value):
+        def set_output_stream(self, value):
             self.__output_stream = value
             self.skip_colors = self.without_colors(value)
             if not self.skip_colors:
@@ -120,8 +117,7 @@ class ColoredOutput(object):
                     self.output_stream.write(chunk)
                 color = not color
     else:
-        @output_stream.setter
-        def output_stream(self, value):
+        def set_output_stream(self, value):
             self.__output_stream = value
             self.skip_colors = self.without_colors(value)
 
@@ -130,6 +126,8 @@ class ColoredOutput(object):
         
         def write_with_colors(self, data):
             self.output_stream.write(data)
+    
+    output_stream = property(get_output_stream, set_output_stream)
 
     def __enter__(self):
         return self

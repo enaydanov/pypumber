@@ -6,7 +6,6 @@ from cfg.set_defaults import set_defaults
 from reporter import Reporter
 from colors import ColoredOutput, highlight_groups
 from step_definitions import MatchNotFound
-from run import SkipStep
 
 
 class StepContext(object):
@@ -29,22 +28,20 @@ class PrettyReporter(Reporter):
         self.step_indent = 4
         self.source_indent = 0
         self.filename = None
-        
-    @property
-    def color(self):
+    
+    # 'color' property
+    def get_color(self):
         return not self.__out.skip_colors
-    
-    @color.setter
-    def color(self, value):
+    def set_color(self, value):
         self.__out.skip_colors = not value
+    color = property(get_color, set_color)
     
-    @property
-    def out(self):
+    # 'out' property
+    def get_out(self):
         return self.__out
-    
-    @out.setter
-    def out(self, stream):
+    def set_out(self, stream):
         self.__out.output_stream = stream 
+    out = property(get_out, set_out)
     
     # Handlers for reporting about whole run execution.
     #~ def start_run(self, scenario_names, tags):
@@ -55,7 +52,7 @@ class PrettyReporter(Reporter):
         lengths.append(minimal)
         self.source_indent = max(lengths) + 2
 
-    def pass_run(self):
+    def end_run(self):
         formatted = []
         formatted.append('%d scenario%s\n' % (self.counts['scenarios'], 's' if self.counts['scenarios'] != 1 else ''))
         for s in ['passed', 'failed', 'skipped', 'pending']:
@@ -63,12 +60,8 @@ class PrettyReporter(Reporter):
                 formatted.append(getattr(self.color_scheme, s)(
                     '%d step%s %s\n' % (self.counts[s], 's' if self.counts[s] != 1 else '', s)
                 ))
-        with self.__out as out:
-            out.write(''.join(formatted))
+        self.__out.write(''.join(formatted))
     
-    def fail_run(self, type, value, traceback):
-        self.pass_run()
-
     # Handlers for reporting of feature execution.
     #~ def skip_feature(self, filename, feature):
         #~ pass
@@ -85,24 +78,16 @@ class PrettyReporter(Reporter):
         if len(header) == 2:
             formatted.append(header[1])
             formatted.append('\n')
-        with self.__out as out:
-            out.write(''.join(formatted))
+        self.__out.write(''.join(formatted))
 
-    def pass_feature(self):
+    def end_feature(self):
         self.__out.write('\n')
-    
-    def fail_feature(self, type, value, traceback):
-        self.pass_feature()
-
 
     # Handlers for reporting of steps execution.
     #~ def start_background(self, background):
         #~ pass
 
-    #~ def pass_background(self):
-        #~ pass
-    
-    #~ def fail_background(self, type, value, traceback):
+    #~ def end_background(self):
         #~ pass
 
     # Handlers for reporting of steps execution.
@@ -122,20 +107,19 @@ class PrettyReporter(Reporter):
                 '# %s:%d' % (os.path.relpath(self.filename), scenario[1].scenario_keyword[1])
             ))
         formatted.append('\n')
-        with self.__out as out:
-            out.write(''.join(formatted))
+        self.__out.write(''.join(formatted))
         self.counts['scenarios'] += 1
 
-    def pass_scenario(self):
+    def end_scenario(self):
         self.__out.write('\n')
-    
-    def fail_scenario(self, type, value, traceback):
-        self.pass_scenario()
 
     # Handlers for reporting of steps execution.
     def start_step(self, section, step):
         self.last_step = StepContext(section, step)
-        return self.last_step
+    
+    def step_definition(self, match):
+        self.last_step.matchobj = match.matchobj
+        self.last_step.fn = match.fn
     
     def format_last_step(self, regular, highlight=None):
         kw = self.last_step.step.step_keyword[1]
@@ -164,20 +148,20 @@ class PrettyReporter(Reporter):
             ))
         formatted.append('\n')
         
-        with self.__out as out:
-            out.write(''.join(formatted))
+        self.__out.write(''.join(formatted))
     
     def pass_step(self):
         self.format_last_step(self.color_scheme.passed, self.color_scheme.passed_param)
         self.counts['passed'] += 1
-    
-    def fail_step(self, type, value, traceback):
-        if issubclass(type, SkipStep):
-            self.format_last_step(self.color_scheme.skipped, self.color_scheme.skipped_param)
-            self.counts['skipped'] += 1
-        elif issubclass(type, MatchNotFound):
-            self.format_last_step(self.color_scheme.undefined)
-            self.counts['pending'] += 1
-        else:
-            self.format_last_step(self.color_scheme.failed, self.color_scheme.failed_param)
-            self.counts['failed'] += 1
+
+    def undefined_step(self):
+        self.format_last_step(self.color_scheme.undefined)
+        self.counts['pending'] += 1
+
+    def skip_step(self):
+        self.format_last_step(self.color_scheme.skipped, self.color_scheme.skipped_param)
+        self.counts['skipped'] += 1
+
+    def fail_step(self, exc):
+        self.format_last_step(self.color_scheme.failed, self.color_scheme.failed_param)
+        self.counts['failed'] += 1

@@ -11,15 +11,14 @@ class Features(object):
         self.__current_language = None
         self.__parser = FeatureParser()
     
-    @property
-    def lang(self):
+    # 'lang' property
+    def get_lang(self):
         return self.__current_language
-    
-    @lang.setter
-    def lang(self, language):
+    def set_lang(self, language):
         if language != self.__current_language:
             set_language(language)
             self.__current_language = language
+    lang = property(get_lang, set_lang)
 
     def __iter__(self):
         for feature in find_files(self.path, '*.feature', self.excludes):

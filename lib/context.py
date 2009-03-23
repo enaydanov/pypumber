@@ -41,12 +41,14 @@ class Context(object):
                 if hasattr(self.reporter, attr):
                     getattr(self.reporter, attr)()
             else:
-                # If step failed for some reason we need to skip all following steps in scenario.
-                if attr == 'step':
-                    self.skip_following_steps = True
                 attr = 'fail_%s' % attr
                 if hasattr(self.reporter, attr):
                     getattr(self.reporter, attr)(type, value, traceback)
-                if self.strict:
+
+                # If step failed for some reason we need to skip all following steps in scenario.
+                if attr == 'step':
+                    self.skip_following_steps = True
+
+                if attr != 'scenario':
                     return False
             return True

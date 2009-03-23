@@ -64,7 +64,8 @@ class Reporter(object):
     #~ def fail_step(self, type, value, traceback):
         #~ pass
     
-    pass
+    def __getattr__(self, attr):
+        return lambda *args, **kwargs: None
 
 
 def load_reporters(d):
