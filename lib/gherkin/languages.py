@@ -14,7 +14,6 @@ except ImportError:
 
 languages_file = os.path.join(os.path.dirname(__file__), 'languages.yml')
 
-@singleton
 class Languages(object):
     def __init__(self):
         try:
@@ -45,6 +44,8 @@ class Languages(object):
 
     def __contains__(self, key):
         return key in self.languages
+
+Languages = singleton(Languages)
 
 
 def set_language(lang):
