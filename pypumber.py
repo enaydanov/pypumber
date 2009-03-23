@@ -9,6 +9,13 @@ def make_path(*path):
 
 sys.path.insert(0, make_path('lib'))
 
+#~ if not hasattr(os.path, 'relpath'):
+    #~ import relpath
+    #~ os.path.relpath = relpath.relpath
+
+import relpath
+os.path.relpath = relpath.relpath
+
 from reporters.pretty import PrettyReporter
 from colors.console_colors import DEFAULT_COLORS
 from colors import ColorScheme, console_color_string

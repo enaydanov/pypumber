@@ -221,7 +221,7 @@ class StepDefinitions(object):
             paths = self.require
             excludes = None
         else:
-            paths = [path if os.path.isdir(path) else os.path.dirname(path) for path in self.path]
+            paths = [(p if os.path.isdir(p) or not os.path.exists(p) else os.path.dirname(p)) for p in self.path]
             excludes = self.excludes
 
         # Set up decorators.
