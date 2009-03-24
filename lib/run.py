@@ -10,8 +10,11 @@ class Run(object):
     def __init__(self):
         set_defaults(self, 'scenario_names', 'tags', 'strict')
 
-    def skip_feature_by_tags(self, tags):
+
+    def skip_feature(self, feature):
         self._run_whole_feature = False
+        
+        tags = feature.tags
         if self.tags is None or tags == []:
             return False
         for tag in self.tags:
@@ -23,9 +26,22 @@ class Run(object):
                 return False
         return False
 
-    def skip_scenario_by_tags(self, tags):
+
+    def skip_scenario(self, scenario, lines):
+        name, tags, line = scenario[1].name, scenario[1].tags, scenario[1].scenario_keyword[1]
+        
+        # Skip by line number.
+        if lines is not None and line not in lines:
+            return True
+        
+        # Skip by scenario name.
+        if (self.scenario_names != []) and (name not in self.scenario_names):
+            return True
+
         if self.tags is None:
             return False
+        
+        # Skip by tags.
         skip = not self._run_whole_feature
         for tag in self.tags:
             if tag[0] == '~':
@@ -36,8 +52,6 @@ class Run(object):
                     skip = False
         return skip
 
-    def skip_scenario_by_name(self, name):
-        return (self.scenario_names != []) and (name not in self.scenario_names)
 
     def _run_steps(self, steps, step_definitions, reporter):
         current_kw, skip_following_steps = None, False
@@ -100,9 +114,9 @@ class Run(object):
 
     def __call__(self, features, step_definitions, reporter):
         reporter.start_run(self.scenario_names, self.tags)
-        for filename, feat in features:
+        for filename, feat, lines in features:
             # Skip complete feature if it doesn't match tags.
-            if self.skip_feature_by_tags(feat.tags):
+            if self.skip_feature(feat):
                 reporter.skip_feature(filename, feat)
                 continue
             
@@ -110,8 +124,8 @@ class Run(object):
             reporter.start_feature(filename, feat)
             for sc in feat.feature_elements:
 
-                # Skip scenario if it doesn't match names or tags.
-                if self.skip_scenario_by_name(sc[1].name) or self.skip_scenario_by_tags(sc[1].tags):
+                # Skip scenario if it doesn't match names, lines or tags.
+                if self.skip_scenario(sc, lines):
                     reporter.skip_scenario(sc)
                     continue
                 

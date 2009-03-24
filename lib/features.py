@@ -4,6 +4,9 @@ from gherkin import FeatureParser, set_language
 from peg import SourceType
 from find_files import find_files
 from cfg.set_defaults import set_defaults
+from collections import defaultdict
+from split_feature_path import split_feature_path
+
 
 class Features(object):
     def __init__(self):
@@ -21,5 +24,13 @@ class Features(object):
     lang = property(get_lang, set_lang)
 
     def __iter__(self):
-        for feature in find_files(self.path, '*.feature', self.excludes):
-            yield (feature, self.__parser(feature, SourceType.FILE))
+        paths = []
+        for path in self.path:
+            feature, lines = split_feature_path(path)
+            if lines:
+                yield (feature, self.__parser(feature, SourceType.FILE), lines)
+                continue
+            paths.append(path)
+        
+        for feature in find_files(paths, '*.feature', self.excludes):
+            yield (feature, self.__parser(feature, SourceType.FILE), None)

@@ -15,6 +15,7 @@ import re, os.path, types
 from find_files import find_files
 from cfg.set_defaults import set_defaults
 from multiplexer import Multiplexer
+from split_feature_path import split_feature_path
 
 
 class AmbiguousString(Exception): 
@@ -74,7 +75,7 @@ class DryRun(object):
 class StepDefinitions(object):
     def __init__(self):
         # Options.
-        set_defaults(self, 'path', 'excludes', 'require', 'guess')
+        set_defaults(self, 'path', 'excludes', 'require', 'guess', 'verbose')
         
         def first_arg_closure(first_arg, fn):
             def tmp(*args):
@@ -221,7 +222,10 @@ class StepDefinitions(object):
             paths = self.require
             excludes = None
         else:
-            paths = [(p if os.path.isdir(p) or not os.path.exists(p) else os.path.dirname(p)) for p in self.path]
+            paths = [
+                (p if os.path.isdir(p) or not os.path.exists(p) else os.path.dirname(p))
+                for p, _ in (split_feature_path(p) for p in self.path)
+            ]
             excludes = self.excludes
 
         # Set up decorators.
@@ -231,16 +235,31 @@ class StepDefinitions(object):
         
         assert type(paths) == types.ListType
         
-        for file in find_files(paths, '*.py', excludes):
-            sys.path.insert(0, os.path.dirname(file))
-            try:
-                name = os.path.basename(file)[:-3] # get filename and drop .py extension
-                if name in sys.modules:
-                    reload(sys.modules[name])
-                else:
-                    __import__(name)
-            finally:
-                sys.path.pop(0)
+        try:
+            saved_stdout = sys.stdout
+            sys.stdout = sys.stderr
+            
+            for file in find_files(paths, '*.py', excludes):
+                sys.path.insert(0, os.path.dirname(file))
+                try:
+                    name = os.path.basename(file)[:-3] # get filename and drop .py extension
+                    
+                    if name in sys.modules:
+                        reload(sys.modules[name])
+                    else:
+                        __import__(name)
+                except:
+                    sys.stderr.write("Warning: an exception was raised during importing '%s' file" % file)
+                    if self.verbose:
+                        import traceback
+                        sys.stderr.write(':\n')
+                        traceback.print_exc()
+                    else:
+                        sys.stderr.write('. Use --verbose for more details.\n')
+                finally:
+                    sys.path.pop(0)
+        finally:
+            sys.stdout = saved_stdout
 
 
 if __name__ == '__main__':
