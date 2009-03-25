@@ -54,22 +54,9 @@ class Match(object):
     def __call__(self):
         return self.fn(*self.args, **self.kwargs)
 
-_DUMMY_MATCH = Match(lambda: None, [], {}, None)
-
 
 _STEP_KEYWORDS = ['given', 'when', 'then']
 _HOOKS = ['before', 'after', 'afterStep']
-
-class DryRun(object):
-    def __init__(self):
-        for kw in _STEP_KEYWORDS:
-            setattr(self, kw, lambda *args: _DUMMY_MATCH)
-        
-        for hook in _HOOKS:
-            setattr(self, hook, lambda: None)
-
-    def load():
-        pass
 
 
 class StepDefinitions(object):

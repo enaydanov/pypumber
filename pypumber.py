@@ -45,7 +45,9 @@ if cli_opts.profile:
 reporter = PrettyReporter()
 reporter.color_scheme = ColorScheme(DEFAULT_COLORS, console_color_string)
 
+#
 # Create main app objects.
+#
 features = Features()
 step_definitions = StepDefinitions()
 run = Run()

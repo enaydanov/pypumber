@@ -8,7 +8,7 @@ class ButFailed(Exception):
 
 class Run(object):
     def __init__(self):
-        set_defaults(self, 'scenario_names', 'tags', 'strict')
+        set_defaults(self, 'scenario_names', 'tags', 'strict', 'dry_run')
 
 
     def skip_feature(self, feature):
@@ -54,7 +54,7 @@ class Run(object):
 
 
     def _run_steps(self, steps, step_definitions, reporter):
-        current_kw, skip_following_steps = None, False
+        current_kw, skip_following_steps = None, self.dry_run
         for step in steps:
             kw = step.step_keyword[0]
             if kw in ['given', 'when', 'then']:

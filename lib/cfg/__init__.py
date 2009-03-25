@@ -4,3 +4,4 @@ from default_options import default_options
 from cli_options import CommandLineOptions
 from profile_options import ProfileOptions
 from env_options import EnvOptions
+from options import Options
