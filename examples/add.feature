@@ -17,4 +17,10 @@ Feature: Addition
     And I fill in '20' for 'first'
     And I fill in '666' for 'second'
     When I press 'Substract'
+      |a|b|
+      |1|2|
+      |3|4|
     Then I should see 'Answer: -10'
+    """
+       Some multiline string
+    """

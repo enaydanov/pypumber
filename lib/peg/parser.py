@@ -196,9 +196,15 @@ class PEGParser(object):
             A <- e+
         """
         result = []
+
+        # One..
         tmp = self._parse_pattern(pattern.pattern)
-        if tmp is not None:
+        if type(tmp) == types.ListType:
+            result.extend(tmp)
+        elif tmp is not None:
             result.append(tmp)
+
+        # ..OrMore
         tmp = self._zero_or_more(pattern)
         if type(tmp) == types.ListType:
             result.extend(tmp)

@@ -2,8 +2,8 @@ Feature: Passing background with multiline args
 
   Background:
     Given table
-      |a|b|
-      |c|d|
+      |a|b|e|
+      |c|d|f|
     And multiline string
     """
       I'm a cucumber and I'm okay. 
@@ -30,3 +30,12 @@ Feature: Passing background with multiline args
       I sleep all night and I test all day
     """
     
+  Scenario: without multi
+    Then the table should be
+    Then the multiline string should be
+
+  Scenario: empty cells
+    Then the table should be
+       |a|b|
+       |||
+    Then the multiline string should be

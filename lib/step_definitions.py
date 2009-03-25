@@ -12,6 +12,7 @@ __license__ = "Python"
 
 
 import re, os.path, types
+from functools import partial
 from find_files import find_files
 from cfg.set_defaults import set_defaults
 from multiplexer import Multiplexer
@@ -63,12 +64,7 @@ class StepDefinitions(object):
     def __init__(self):
         # Options.
         set_defaults(self, 'path', 'excludes', 'require', 'guess', 'verbose')
-        
-        def first_arg_closure(first_arg, fn):
-            def tmp(*args):
-                return fn(first_arg, *args)
-            return tmp
-        
+
         # Create mappings, decorators and runners for step definitions.
         for kw in _STEP_KEYWORDS:
             # Create map.
@@ -77,13 +73,13 @@ class StepDefinitions(object):
             map = getattr(self, map_name)
             
             # Make decorators and runners.
-            setattr(self, kw.capitalize(), first_arg_closure(map, self.__add_rule)) 
-            setattr(self, kw, first_arg_closure(map, self.__find_and_run))
+            setattr(self, kw.capitalize(), partial(self.__add_rule, map)) 
+            setattr(self, kw, partial(self.__find_and_run, map))
         
         # Create multiplexers and decorators for hooks.
         for hook in _HOOKS:
             setattr(self, hook, Multiplexer())
-            setattr(self, hook.capitalize(), first_arg_closure(getattr(self, hook), self.__add_hook))
+            setattr(self, hook.capitalize(), partial(self.__add_hook, getattr(self, hook)))
     
     
     def __add_rule(self, patterns, string, *args):
@@ -102,7 +98,7 @@ class StepDefinitions(object):
             return func
         return tmp
     
-    def __find_and_run(self, patterns, string):
+    def __find_and_run(self, patterns, string, multi=None):
         """Find match for string in patterns and run handler."""
         match = [ (f[0], f[1], m) 
             for f, m in [
@@ -148,7 +144,7 @@ class StepDefinitions(object):
         all_spans = {}
         for k in range(1, len(matchobj.groups())+1):
             span = matchobj.span(k)
-            if all_spans.has_key(span):
+            if span in all_spans:
                 all_spans[span].append(k)
             else:
                 all_spans[span] = [k]
@@ -175,8 +171,14 @@ class StepDefinitions(object):
             for name in func_args[0][-len(defaults):]:
                 kw_args[name] = defaults.pop(0)
                 
-        # Put anon_groups and names together.
+        # Put named groups.
         kw_args.update(re_dict)
+        
+        # Use 'multi' as first unnamed group.
+        if multi is not None:
+            kw_args[names.pop(0)] = multi
+        
+        # Put anon_groups and names together.
         try:
             for name in names:
                 kw_args[name] = matchobj.group(anon_groups.pop(0))

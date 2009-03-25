@@ -69,7 +69,7 @@ class Run(object):
             
             # Try to find step definition.
             try:
-                match = getattr(step_definitions, current_kw)(step.name)
+                match = getattr(step_definitions, current_kw)(step.name, step.multi)
                 reporter.step_definition(match)
             except MatchNotFound:
                 reporter.undefined_step()

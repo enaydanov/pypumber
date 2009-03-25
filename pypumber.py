@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-from __future__ import with_statement
-
 import sys, os
 
 def make_path(*path):

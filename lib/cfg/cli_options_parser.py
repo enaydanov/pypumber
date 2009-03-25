@@ -207,7 +207,7 @@ parser.add_option("-a", "--autoformat", metavar="DIRECTORY", type="string", acti
     "\n\n"
     "Implies --dry-run --formatter pretty.")
 
-parser.add_option("-m", "--no-multiline", action="store_true",
+parser.add_option("-m", "--no-multiline", action="store_false", dest="multiline",
     help="Don't print multiline strings and tables under steps.")
 
 parser.add_option("-n", "--no-source", action="store_false", dest="source",
