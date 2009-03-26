@@ -114,7 +114,10 @@ class PrettyReporter(Reporter):
             return
         
         self.show_feature_header()
-        
+
+        # Calculate source indent. 
+        self.set_source_indent(bg.steps, len(bg.kw_i18n))
+
         self.__out.write(''.join(
             (' ' * self.scenario_indent, self.color_scheme.passed(bg.kw_i18n), '\n')
         ))
