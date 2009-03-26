@@ -217,7 +217,7 @@ class StepDefinitions(object):
         kw_args.update(re_dict)
         
         if len(anon_groups):
-            anon_groups = matchobj.group(*anon_groups)
+            anon_groups = list(matchobj.group(*anon_groups))
         
         # Use 'multi' as first unnamed group.
         if multi is not None:

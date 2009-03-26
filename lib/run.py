@@ -8,7 +8,21 @@ class ButFailed(Exception):
 
 class Run(object):
     def __init__(self):
-        set_defaults(self, 'scenario_names', 'tags', 'strict', 'dry_run')
+        set_defaults(self, 'scenario_names', 'strict', 'dry_run')
+        self.__tags = None
+
+    # 'tags' property.
+    def get_tags(self):
+        return self.__tags
+    def set_tags(self, tags):
+        if tags is None:
+            self.positive_tags, self.negative_tags = set(), set()
+        else:
+            self.positive_tags = set([tag for tag in tags if tag[0] != '~'])
+            self.negative_tags = set([tag[1:] for tag in tags if tag[0] == '~'])
+        self.__tags = tags
+    tags = property(get_tags, set_tags)
+
 
     def skip_feature(self, feature):
         self._run_whole_feature = not (self.tags is None or self.positive_tags)
@@ -27,8 +41,8 @@ class Run(object):
         return False
 
 
-    def skip_scenario(self, scenario, lines):
-        name, tags, line = scenario[1].name, set(scenario[1].tags()), scenario[1].scenario_keyword[1]
+    def skip_scenario(self, sc, lines):
+        name, tags, line = sc.name, set(sc.tags()), sc.lineno
         
         # Skip by line number.
         if lines is not None and line not in lines:
@@ -51,10 +65,10 @@ class Run(object):
         return not self._run_whole_feature
 
 
-    def _run_steps(self, steps, step_definitions, reporter):
+    def _run_steps(self, sc, step_definitions, reporter):
         current_kw, skip_following_steps = None, self.dry_run
-        for step in steps:
-            kw = step.step_keyword[0]
+        for step in sc.steps:
+            kw = step.kw
             if kw in ['given', 'when', 'then']:
                 current_kw = kw
             else:
@@ -113,14 +127,10 @@ class Run(object):
             except:
                 pass
 
-    def _run_outline_steps(*args):
+    def _run_outline_steps(self, *args):
         self._run_steps(*args)
 
     def __call__(self, features, step_definitions, reporter):
-        if self.tags is not None:
-            self.positive_tags = set([tag for tag in self.tags if tag[0] != '~'])
-            self.negative_tags = set([tag[1:] for tag in self.tags if tag[0] == '~'])
-        
         reporter.start_run(self.scenario_names, self.tags)
         for filename, feat, lines in features:
             # Skip complete feature if it doesn't match tags.
@@ -137,9 +147,6 @@ class Run(object):
                     reporter.skip_scenario(sc)
                     continue
                 
-                # Start scenario execution.
-                reporter.start_scenario(sc)
-                
                 # Run Before hooks.
                 try:
                     step_definitions.before()
@@ -148,23 +155,26 @@ class Run(object):
                 
                 # If feature has background then run it.
                 if 'background' in feat:
-                    reporter.start_background()
-                    self._run_steps(feat.background.steps,  step_definitions, reporter)
+                    reporter.start_background(feat.background)
+                    self._run_steps(feat.background,  step_definitions, reporter)
                     reporter.end_background()
 
+                # Start scenario execution.
+                reporter.start_scenario(sc)
+
                 # Run scenario or scenario outline.
-                (self._run_steps if sc[0] == 'scenario' \
-                    else self._run_outline_steps)(sc[1].steps, step_definitions, reporter)
-           
+                (self._run_steps if sc.kw == 'scenario' \
+                    else self._run_outline_steps)(sc, step_definitions, reporter)
+
+                # Scenario finished.
+                reporter.end_scenario()
+
                 # Run After hooks.
                 try:
                     step_definitions.after()
                 except:
                     pass
-                
-                # Scenario finished.
-                reporter.end_scenario()
-            
+
             # Feature finished.
             reporter.end_feature()
         

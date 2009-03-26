@@ -1,11 +1,10 @@
 #! /usr/bin/env python
 
-import sys, os.path, inspect, types, traceback
+import sys, os.path, types, traceback, string
 
 from cfg.set_defaults import set_defaults
 from reporter import Reporter
 from colors import ColoredOutput, highlight_groups
-from step_definitions import MatchNotFound
 
 
 class StepContext(object):
@@ -29,8 +28,12 @@ class PrettyReporter(Reporter):
         self.step_indent = 4
         self.source_indent = 0
         self.table_indent = 6
+        self.talign = string.ljust
         self.traceback_indent = 6
         self.filename = None
+        self.silent_steps = False
+        self.background_shown = False
+        self.feature_header = None
     
     # 'color' property
     def get_color(self):
@@ -51,8 +54,8 @@ class PrettyReporter(Reporter):
         #~ pass
 
     def set_source_indent(self, steps, minimal):
-        lengths = [len(step['step_keyword'][1]) + len(step['name']) for step in steps]
-        lengths.append(minimal)
+        lengths = [len(step.kw_i18n) + len(step.name) for step in steps]
+        lengths.append(self.scenario_indent - self.step_indent + minimal)
         self.source_indent = max(lengths) + 2
 
     def end_run(self):
@@ -89,40 +92,67 @@ class PrettyReporter(Reporter):
         if len(header) == 2:
             formatted.extend((header[1], '\n'))
         
-        self.__out.write(''.join(formatted))
+        formatted.append('\n')
+        
+        # Deferring output.
+        self.feature_header = ''.join(formatted)
+
+    def show_feature_header(self):
+        if self.feature_header is not None:
+            self.__out.write(self.feature_header)
+            self.feature_header = None
 
     def end_feature(self):
-        self.__out.write('\n')
+        if self.feature_header is None:
+            self.__out.write('\n')
+        self.feature_header = None
 
     # Handlers for reporting of steps execution.
-    #~ def start_background(self, background):
-        #~ pass
+    def start_background(self, bg):
+        if self.background_shown:
+            self.silent_steps = True
+            return
+        
+        self.show_feature_header()
+        
+        self.__out.write(''.join(
+            (' ' * self.scenario_indent, self.color_scheme.passed(bg.kw_i18n), '\n')
+        ))
 
-    #~ def end_background(self):
-        #~ pass
+    def end_background(self):
+        self.silent_steps = False
+        
+        if self.background_shown:
+            return
+        
+        self.__out.write('\n')
+        self.background_shown = True
+        
 
     # Handlers for reporting of steps execution.
     #~ def skip_scenario(self, scenario):
         #~ pass
     
-    def start_scenario(self, scenario):
-        formatted, scenario_indent, tags = [], ' ' * self.scenario_indent, scenario[1].tags
-        kw, name, lineno = scenario[1].scenario_keyword[0], scenario[1].name, scenario[1].scenario_keyword[1]
+    def start_scenario(self, sc):
+        self.show_feature_header()
+        
+        formatted, indent, tags = [], ' ' * self.scenario_indent, sc.tags()
+        kw, name, lineno = sc.kw_i18n, sc.name, sc.lineno
         
         # Print tags.
         if tags:
-            formatted.extend((scenario_indent, self.color_scheme.tag(' '.join(tags)), '\n'))
+            formatted.extend((indent, self.color_scheme.tag(' '.join(tags)), '\n'))
 
         # Calculate source indent for this scenario. 
-        str_len = len(kw) + len(name)
-        self.set_source_indent(scenario[1].steps, str_len)
+        sc_len = len(kw) + len(name)
+        self.set_source_indent(sc.steps, sc_len)
         
         # Print Scenario line.
-        formatted.extend((scenario_indent, self.color_scheme.passed('%s %s' % (kw, name))))
+        formatted.extend((indent, self.color_scheme.passed('%s %s' % (kw, name))))
         
         # Print source of scenario.
         if self.source:
-            formatted.append(' ' * (self.source_indent - str_len + self.step_indent - self.scenario_indent))
+            formatted.append(' ' * (self.source_indent - sc_len + self.step_indent - self.scenario_indent))
             formatted.append(self.color_scheme.comment(
                 '# %s:%d' % (os.path.relpath(self.filename), lineno)
             ))
@@ -145,15 +175,14 @@ class PrettyReporter(Reporter):
         self.last_step.source_line = match.source_line
     
     def format_last_step(self, regular, highlight=None):
+        if self.silent_steps:
+            return
+        
         step = self.last_step.step
         
-        kw = step.step_keyword[1]
-        name = step.name
-        multi = step.multi
-        
-        step_indent = ' ' * self.step_indent
-        
-        formatted = [step_indent, regular(kw), ' ']
+        kw, name, multi, indent = step.kw_i18n, step.name, step.multi, ' ' * self.step_indent
+           
+        formatted = [indent, regular(kw), ' ']
         formatted.append(
             regular(name) 
                 if highlight is None else 
@@ -170,7 +199,7 @@ class PrettyReporter(Reporter):
             source_line = self.last_step.source_line
             if source_file is None or source_line is None:
                 source_file = self.filename
-                source_line = step.step_keyword[2] 
+                source_line = step.lineno 
             formatted.append(' ' * (self.source_indent - len(kw) - len(name)))
             formatted.append(self.color_scheme.comment(
                 '# %s:%d' % (os.path.relpath(source_file), source_line)
@@ -182,7 +211,7 @@ class PrettyReporter(Reporter):
             if type(multi) == types.StringType:
                 # PyString
                 formatted.append(regular(
-                    '%s"""\n%s\n%s"""\n' % (step_indent, multi, step_indent)
+                    '%s"""\n%s\n%s"""\n' % (indent, multi, indent)
                 ))
             else:
                 # Table
@@ -192,12 +221,15 @@ class PrettyReporter(Reporter):
                 for f in fields:
                     w[f] = max(len(f), max(len(row[f]) for row in rows))
                 
+                # Table row prefix.
                 row_start = ' ' * self.table_indent + '| '
                 
-                table = [row_start, ' | '.join(f.ljust(w[f]) for f in fields), ' |\n']
+                # Print table.
+                table = [row_start, ' | '.join(self.talign(f, w[f]) for f in fields), ' |\n']
                 for row in rows:
-                    table.extend((row_start, ' | '.join(row[f].ljust(w[f]) for f in fields), ' |\n'))
-                
+                    table.extend(
+                        (row_start, ' | '.join(self.talign(row[f], w[f]) for f in fields), ' |\n')
+                    )                
                 formatted.append(regular(''.join(table)))
         
         self.__out.write(''.join(formatted))

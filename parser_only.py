@@ -16,7 +16,9 @@ from features import Features
 options = Options(
     lang='en',
     multiline=True,
+    #path=['examples\\scenario_outline_failing_background.feature', ]
     path=['examples\\complex.feature', ]
+    #path=['examples\\self_test\\features\\sample.feature', ]
 )
 
 features = Features()

@@ -16,6 +16,8 @@ Feature: Sample
     Given failing
       """
       hello
+      multiline
+      string
       """
 
   Scenario: Pending

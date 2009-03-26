@@ -13,7 +13,7 @@ Feature: Passing background with multiline args
   Scenario: passing background
     Then the table should be
       |a|b|
-      |c|d|
+      |c|dmnogo|
     Then the multiline string should be
     """
       I'm a cucumber and I'm okay. 
