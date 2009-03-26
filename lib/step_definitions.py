@@ -216,14 +216,17 @@ class StepDefinitions(object):
         # Put named groups.
         kw_args.update(re_dict)
         
+        if len(anon_groups):
+            anon_groups = matchobj.group(*anon_groups)
+        
         # Use 'multi' as first unnamed group.
         if multi is not None:
-            kw_args[names.pop(0)] = multi
+            anon_groups.insert(0, multi)
         
         # Put anon_groups and names together.
         try:
             for name in names:
-                kw_args[name] = matchobj.group(anon_groups.pop(0))
+                kw_args[name] = anon_groups.pop(0)
         except IndexError:
             raise TypeError()
 
@@ -237,7 +240,7 @@ class StepDefinitions(object):
  
         # If there are still some not assigned values put them to values.
         if len(anon_groups):
-            values.extend(matchobj.group(*anon_groups))
+            values.extend(anon_groups)
 
         return Match(func, values, kw_args, matchobj)
 

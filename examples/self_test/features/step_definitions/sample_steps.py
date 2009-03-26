@@ -21,3 +21,7 @@ def _(x):
 @Given(r'^multiline plus positional argument$')
 def _(*args):
     assert args[0][1]['a'] == 'c'
+
+@Given(r'^multiline plus keyword argument$')
+def _(**kw):
+    pass

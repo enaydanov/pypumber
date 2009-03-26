@@ -15,7 +15,7 @@ class StepContext(object):
 
 class PrettyReporter(Reporter):
     def __init__(self):
-        set_defaults(self, 'backtrace', 'color_scheme', 'source', 'multiline')
+        set_defaults(self, 'backtrace', 'color_scheme', 'source', 'multiline', 'backtrace')
         self.__out = ColoredOutput(sys.stdout)
         self.counts = {
             'scenarios': 0,
@@ -216,12 +216,13 @@ class PrettyReporter(Reporter):
 
     def fail_step(self, exc):
         self.format_last_step(self.color_scheme.failed, self.color_scheme.failed_param)
-        indent = ' ' * self.traceback_indent
-        exc_str = []
-        for line in traceback.format_exc().split('\n'):
-            exc_str.append(indent + line)
-        self.__out.write(self.color_scheme.failed('\n'.join(exc_str)))
-        self.__out.write('\n')
+        if self.backtrace:
+            indent = ' ' * self.traceback_indent
+            exc_str = []
+            for line in traceback.format_exc().split('\n'):
+                exc_str.append(indent + line)
+            self.__out.write(self.color_scheme.failed('\n'.join(exc_str)))
+            self.__out.write('\n')
         self.counts['failed'] += 1
 
     def pending_step(self):

@@ -22,7 +22,10 @@ Feature: Sample
     Given some pending step 5
     And another pending step 6
 
-  Scenario: Multiline
+  Scenario: Multiline (only positional or keyword arguments)
     Given multiline plus positional argument
+      |a|b|
+      |c|d|
+    Given multiline plus keyword argument
       |a|b|
       |c|d|
