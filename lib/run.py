@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 
 from cfg.set_defaults import set_defaults
-from step_definitions import MatchNotFound
+from step_definitions import MatchNotFound, Pending
 
 class ButFailed(Exception):
     pass
@@ -10,25 +10,25 @@ class Run(object):
     def __init__(self):
         set_defaults(self, 'scenario_names', 'tags', 'strict', 'dry_run')
 
-
     def skip_feature(self, feature):
-        self._run_whole_feature = False
+        self._run_whole_feature = not (self.tags is None or self.positive_tags)
+
+        tags = set(feature.tags())
         
-        tags = feature.tags
-        if self.tags is None or tags == []:
+        if self.tags is None or not tags:
             return False
-        for tag in self.tags:
-            if tag[0] == '~':
-                if tag[1:] in tags:
-                    return True
-            elif tag in tags:
-                self._run_whole_feature = True # side-effect
-                return False
+        
+        if self.negative_tags & tags:
+            return True
+        
+        if self.positive_tags & tags:
+            self._run_whole_feature = True  # side-effect
+
         return False
 
 
     def skip_scenario(self, scenario, lines):
-        name, tags, line = scenario[1].name, scenario[1].tags, scenario[1].scenario_keyword[1]
+        name, tags, line = scenario[1].name, set(scenario[1].tags()), scenario[1].scenario_keyword[1]
         
         # Skip by line number.
         if lines is not None and line not in lines:
@@ -42,15 +42,13 @@ class Run(object):
             return False
         
         # Skip by tags.
-        skip = not self._run_whole_feature
-        for tag in self.tags:
-            if tag[0] == '~':
-                if tag[1:] in tags:
-                    return True
-            else:
-                if tag in tags:
-                    skip = False
-        return skip
+        if self.negative_tags & tags:
+            return True
+        
+        if self.positive_tags & tags:
+            return False
+        
+        return not self._run_whole_feature
 
 
     def _run_steps(self, steps, step_definitions, reporter):
@@ -94,6 +92,12 @@ class Run(object):
                     # If all fine, but we are running But step then raise ButFailed exception.
                     if but:
                         raise ButFailed(step.name)
+                except Pending, e:  # Pending step.
+                    if self.strict:
+                        reporter.fail_step(e)
+                        skip_following_steps = True
+                    else:
+                        reporter.pending_step()
                 except Exception, e:
                     if but and not issubclass(e, ButFailed):  # But step passed.
                         reporter.pass_step()
@@ -113,6 +117,10 @@ class Run(object):
         self._run_steps(*args)
 
     def __call__(self, features, step_definitions, reporter):
+        if self.tags is not None:
+            self.positive_tags = set([tag for tag in self.tags if tag[0] != '~'])
+            self.negative_tags = set([tag[1:] for tag in self.tags if tag[0] == '~'])
+        
         reporter.start_run(self.scenario_names, self.tags)
         for filename, feat, lines in features:
             # Skip complete feature if it doesn't match tags.

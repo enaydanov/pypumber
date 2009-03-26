@@ -11,7 +11,7 @@ __copyright__ = "Copyright (c) 2009 Eugene Naydanov"
 __license__ = "Python"
 
 
-import re, os.path, types
+import re, os.path, types, inspect
 from functools import partial
 from find_files import find_files
 from cfg.set_defaults import set_defaults
@@ -27,10 +27,40 @@ class MatchNotFound(Exception):
     """Exception: match not found."""
     pass
 
+class Pending(Exception):
+    """Pending exception and decorator."""
+    def __init__(self, message='TODO'):
+        super(Pending, self).__init__(message)
+        self.pending_message = message
+        
+    def __call__(self, fn=None):
+        if fn is None:
+            raise self
+        def tmp(*args, **kwargs):
+            try:
+                fn(*args, **kwargs)
+            except:
+                raise self
+            else:
+                raise Pending("Expected pending '%s' to fail. No Error was raised. No longer pending?" % self.pending_message)
+        setattr(tmp, 'source_file', inspect.getsourcefile(fn))
+        setattr(tmp, 'source_line', inspect.getsourcelines(fn)[1])
+        
+        return tmp
+
+    def _set_sub_decorator(self, name, kw_deco):
+        def kw(*args, **kwargs):
+            registrator = kw_deco(*args, **kwargs)
+            def pending(fn):
+                return registrator(self(fn))
+            return pending
+        setattr(self, name, kw)
+
 _ARG_FLAG = 0x04
 _KW_FLAG = 0x08
 
 def _get_func_args(f):
+    # TODO: remove this. Look 'inspect' module.
     arg_name = None
     kw_name = None
     argcount = f.func_code.co_argcount
@@ -51,7 +81,17 @@ def _get_func_args(f):
 class Match(object):
     def __init__(self, fn, args, kwargs, matchobj):
         self.fn, self.args, self.kwargs, self.matchobj = fn, args, kwargs, matchobj
-    
+        
+        if hasattr(fn, 'source_file'):
+            self.source_file = fn.source_file
+        else:
+            self.source_file = inspect.getsourcefile(fn)
+            
+        if hasattr(fn, 'source_line'):
+            self.source_line = fn.source_line
+        else:
+            self.source_line = inspect.getsourcelines(fn)[1]
+
     def __call__(self):
         return self.fn(*self.args, **self.kwargs)
 
@@ -64,16 +104,19 @@ class StepDefinitions(object):
     def __init__(self):
         # Options.
         set_defaults(self, 'path', 'excludes', 'require', 'guess', 'verbose')
+        self.__pending = Pending()
 
         # Create mappings, decorators and runners for step definitions.
         for kw in _STEP_KEYWORDS:
             # Create map.
             map_name = '_map_%s' % kw
+            deco_name = kw.capitalize()
             setattr(self, map_name, {})
             map = getattr(self, map_name)
             
             # Make decorators and runners.
-            setattr(self, kw.capitalize(), partial(self.__add_rule, map)) 
+            setattr(self, deco_name, partial(self.__add_rule, map))
+            self.__pending._set_sub_decorator(deco_name, getattr(self, deco_name))
             setattr(self, kw, partial(self.__find_and_run, map))
         
         # Create multiplexers and decorators for hooks.
@@ -81,22 +124,21 @@ class StepDefinitions(object):
             setattr(self, hook, Multiplexer())
             setattr(self, hook.capitalize(), partial(self.__add_hook, getattr(self, hook)))
     
-    
     def __add_rule(self, patterns, string, *args):
         """Add rule for string to patterns (which is one of the mappings)."""
         if len(set(args)) != len(args):
-            raise TypeError()
-        def tmp(func):
+            raise TypeError('duplicate argument names in step definition: %s' % args)
+        def registrator(func):
             patterns[re.compile(string)] = (func, args)
             return func
-        return tmp
+        return registrator
 
     def __add_hook(self, multiplexer):
         """Add hook to multiplexer."""
-        def tmp(func):
+        def registrator(func):
             multiplexer.__outputs__.append(func)
             return func
-        return tmp
+        return registrator
     
     def __find_and_run(self, patterns, string, multi=None):
         """Find match for string in patterns and run handler."""
@@ -107,9 +149,9 @@ class StepDefinitions(object):
         ]
     
         if len(match) > 1:
-            raise AmbiguousString
+            raise AmbiguousString()
         if not match:
-            raise MatchNotFound
+            raise MatchNotFound("match for '%s' not found" % string)
 
         func, args, matchobj, = match[0]
         re_dict = matchobj.groupdict()
@@ -221,6 +263,7 @@ class StepDefinitions(object):
         for kw in _STEP_KEYWORDS + _HOOKS:
             deco = kw.capitalize()
             setattr(decorators, deco, getattr(self, deco))
+        setattr(decorators, 'pending', self.__pending)
         
         assert type(paths) == types.ListType
         

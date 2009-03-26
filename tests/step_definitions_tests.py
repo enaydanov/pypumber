@@ -215,7 +215,128 @@ class TestStepDefinitions(unittest.TestCase):
         r.load()
         self.assertEqual(r.given("some string")(), "tmp")
         self.assertEqual(self.r.given("some string")(), "tmp")
-   
+
+
+class TestPending(unittest.TestCase):
+    def setUp(self):
+        self.p = Pending()
+    
+    def tearDown(self):
+        del(self.p)
+        
+    def test_000_defaults(self):
+        self.assertEqual(self.p.pending_message, 'TODO')
+    
+    def test_001_raising(self):
+        try:
+            raise self.p
+        except Exception, e:
+            self.assertEqual(e.args, ('TODO', ))
+    
+    def test_002_calling(self):
+        self.assertRaises(Pending, self.p)
+        
+    def test_003_catch(self):
+        try:
+            self.p()
+        except Exception, e:
+            self.assertEqual(e, self.p)
+    
+    def test_004_decorating_successful_func(self):
+        @self.p
+        def tmp():
+            pass
+        self.assertRaises(Pending, tmp)
+    
+    def test_005_decorating_pending_func(self):
+        @self.p
+        def tmp():
+            self.p()
+        self.assertRaises(Pending, tmp)
+
+    def test_006_decorating_failing_func(self):
+        @self.p
+        def tmp():
+            raise Exception
+        self.assertRaises(Pending, tmp)
+
+    def test_007_setattr_func(self):
+        def deco(fn):
+            def tmp(fn):
+                return fn
+            return tmp
+        
+        self.p._set_sub_decorator('deco', deco)
+        
+        @self.p.deco
+        def succ():
+            pass
+        
+        @self.p.deco
+        def fail():
+            raise Exception
+        
+        self.assertRaises(Pending, succ)
+        self.assertRaises(Pending, fail)
+
+    def test_008_setattr_lamda(self):
+        deco = lambda fn: lambda fn: fn
+ 
+        self.p._set_sub_decorator('deco', deco)
+        
+        @self.p.deco
+        def succ():
+            pass
+        
+        @self.p.deco
+        def fail():
+            raise Exception
+        
+        self.assertRaises(Pending, succ)
+        self.assertRaises(Pending, fail)
+
+    def test_009_setattr_instance_method_of_oldstyle_class(self):
+        class A:
+            def deco(self, fn):
+                def tmp(fn):
+                    return fn
+                return tmp
+        
+        a = A()
+        self.p._set_sub_decorator('deco', a.deco)
+        
+        @self.p.deco
+        def succ():
+            pass
+        
+        @self.p.deco
+        def fail():
+            raise Exception
+        
+        self.assertRaises(Pending, succ)
+        self.assertRaises(Pending, fail)
+    
+    def test_010_setattr_instance_method_of_newstyle_class(self):
+        class A(object):
+            def deco(self, fn):
+                def tmp(fn):
+                    return fn
+                return tmp
+        
+        a = A()
+        self.p._set_sub_decorator('deco', a.deco)
+        
+        @self.p.deco
+        def succ():
+            pass
+        
+        @self.p.deco
+        def fail():
+            raise Exception
+        
+        self.assertRaises(Pending, succ)
+        self.assertRaises(Pending, fail)
+
 
 if __name__ == '__main__':
     unittest.main()

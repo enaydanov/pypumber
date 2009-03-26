@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import sys, os.path, inspect, types
+import sys, os.path, inspect, types, traceback
 
 from cfg.set_defaults import set_defaults
 from reporter import Reporter
@@ -9,8 +9,8 @@ from step_definitions import MatchNotFound
 
 
 class StepContext(object):
-    def __init__(self, section, step, matchobj=None, fn=None):
-        self.section, self.step, self.matchobj, self.fn = section, step, matchobj, fn
+    def __init__(self, section, step, matchobj=None, source_file=None, source_line=None):
+        self.section, self.step, self.matchobj, self.source_file, self.source_line = section, step, matchobj, source_file, source_line
 
 
 class PrettyReporter(Reporter):
@@ -29,6 +29,7 @@ class PrettyReporter(Reporter):
         self.step_indent = 4
         self.source_indent = 0
         self.table_indent = 6
+        self.traceback_indent = 6
         self.filename = None
     
     # 'color' property
@@ -57,7 +58,7 @@ class PrettyReporter(Reporter):
     def end_run(self):
         formatted = []
         formatted.append('%d scenario%s\n' % (self.counts['scenarios'], 's' if self.counts['scenarios'] != 1 else ''))
-        for s in ['passed', 'failed', 'skipped', 'pending', 'undefined']:
+        for s in ['failed', 'skipped', 'undefined', 'pending', 'passed', ]:
             if self.counts[s]:
                 formatted.append(getattr(self.color_scheme, s)(
                     '%d step%s %s\n' % (self.counts[s], 's' if self.counts[s] != 1 else '', s)
@@ -69,7 +70,7 @@ class PrettyReporter(Reporter):
         #~ pass
         
     def start_feature(self, filename, feature):
-        formatted, self.filename, header, tags = [], filename, feature.header.split('\n', 1), feature.tags
+        formatted, self.filename, header, tags = [], filename, feature.header.split('\n', 1), feature.tags()
         
         # Print tags.
         if tags:
@@ -140,14 +141,16 @@ class PrettyReporter(Reporter):
     
     def step_definition(self, match):
         self.last_step.matchobj = match.matchobj
-        self.last_step.fn = match.fn
+        self.last_step.source_file = match.source_file
+        self.last_step.source_line = match.source_line
     
     def format_last_step(self, regular, highlight=None):
-        kw = self.last_step.step.step_keyword[1]
-        lineno = self.last_step.step.step_keyword[2]
-        fn = self.last_step.fn
-        name = self.last_step.step.name
-        multi = self.last_step.step.multi
+        step = self.last_step.step
+        
+        kw = step.step_keyword[1]
+        name = step.name
+        multi = step.multi
+        
         step_indent = ' ' * self.step_indent
         
         formatted = [step_indent, regular(kw), ' ']
@@ -163,13 +166,14 @@ class PrettyReporter(Reporter):
         
         # Print source of steps and scenarios.
         if self.source:
-            if fn is None:
-                file_line = (os.path.relpath(self.filename), lineno)
-            else:
-                file_line = (os.path.relpath(inspect.getfile(fn)), inspect.getsourcelines(fn)[1])
+            source_file = self.last_step.source_file
+            source_line = self.last_step.source_line
+            if source_file is None or source_line is None:
+                source_file = self.filename
+                source_line = step.step_keyword[2] 
             formatted.append(' ' * (self.source_indent - len(kw) - len(name)))
             formatted.append(self.color_scheme.comment(
-                '# %s:%d' % file_line
+                '# %s:%d' % (os.path.relpath(source_file), source_line)
             ))
         formatted.append('\n')
         
@@ -212,6 +216,12 @@ class PrettyReporter(Reporter):
 
     def fail_step(self, exc):
         self.format_last_step(self.color_scheme.failed, self.color_scheme.failed_param)
+        indent = ' ' * self.traceback_indent
+        exc_str = []
+        for line in traceback.format_exc().split('\n'):
+            exc_str.append(indent + line)
+        self.__out.write(self.color_scheme.failed('\n'.join(exc_str)))
+        self.__out.write('\n')
         self.counts['failed'] += 1
 
     def pending_step(self):
