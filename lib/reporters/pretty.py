@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import sys, os.path, types, traceback, string
+import sys, os.path, types, traceback, string, collections
 
 from cfg.set_defaults import set_defaults
 from reporter import Reporter
@@ -10,30 +10,31 @@ from colors import ColoredOutput, highlight_groups
 class StepContext(object):
     def __init__(self, section, step, matchobj=None, source_file=None, source_line=None):
         self.section, self.step, self.matchobj, self.source_file, self.source_line = section, step, matchobj, source_file, source_line
+        if hasattr(step, 'used_parameters'):
+            self.used = step.used_parameters
+        else:
+            self.used = set()
 
 
 class PrettyReporter(Reporter):
     def __init__(self):
         set_defaults(self, 'backtrace', 'color_scheme', 'source', 'multiline', 'backtrace')
         self.__out = ColoredOutput(sys.stdout)
-        self.counts = {
-            'scenarios': 0,
-            'passed': 0,
-            'failed': 0,
-            'skipped': 0,
-            'pending': 0,
-            'undefined': 0,
-        }
+        self.counts, self.used = collections.defaultdict(int), collections.defaultdict(set)
         self.scenario_indent = 2
         self.step_indent = 4
         self.source_indent = 0
         self.table_indent = 6
         self.talign = string.ljust
+        self.row_start = ' ' * self.table_indent + '| '
         self.traceback_indent = 6
         self.filename = None
         self.silent_steps = False
         self.background_shown = False
+        self.current_example = None
+        self.current_row = None
         self.feature_header = None
+        self.deferred_exception = None
     
     # 'color' property
     def get_color(self):
@@ -54,9 +55,10 @@ class PrettyReporter(Reporter):
         #~ pass
 
     def set_source_indent(self, steps, minimal):
-        lengths = [len(step.kw_i18n) + len(step.name) for step in steps]
-        lengths.append(self.scenario_indent - self.step_indent + minimal)
-        self.source_indent = max(lengths) + 2
+        lengths = [self.scenario_indent - self.step_indent + minimal,]
+        if steps is not None:
+            lengths.extend([len(step.kw_i18n) + len(step.name) for step in steps])
+        self.source_indent = max(lengths) + 1
 
     def end_run(self):
         formatted = []
@@ -73,7 +75,7 @@ class PrettyReporter(Reporter):
         #~ pass
         
     def start_feature(self, filename, feature):
-        formatted, self.filename, header, tags = [], filename, feature.header.split('\n', 1), feature.tags()
+        formatted, self.filename, header, tags = [], filename, feature.header.split('\n', 1), feature.tags
         
         # Print tags.
         if tags:
@@ -119,7 +121,7 @@ class PrettyReporter(Reporter):
         self.set_source_indent(bg.steps, len(bg.kw_i18n))
 
         self.__out.write(''.join(
-            (' ' * self.scenario_indent, self.color_scheme.passed(bg.kw_i18n), '\n')
+            (' ' * self.scenario_indent, bg.kw_i18n, '\n')
         ))
 
     def end_background(self):
@@ -139,7 +141,7 @@ class PrettyReporter(Reporter):
     def start_scenario(self, sc):
         self.show_feature_header()
         
-        formatted, indent, tags = [], ' ' * self.scenario_indent, sc.tags()
+        formatted, indent, tags = [], ' ' * self.scenario_indent, sc.tags
         kw, name, lineno = sc.kw_i18n, sc.name, sc.lineno
         
         # Print tags.
@@ -151,7 +153,7 @@ class PrettyReporter(Reporter):
         self.set_source_indent(sc.steps, sc_len)
         
         # Print Scenario line.
-        formatted.extend((indent, self.color_scheme.passed('%s %s' % (kw, name))))
+        formatted.extend((indent, '%s %s' % (kw, name)))
         
         # Print source of scenario.
         if self.source:
@@ -163,12 +165,68 @@ class PrettyReporter(Reporter):
         formatted.append('\n')
         
         self.__out.write(''.join(formatted))
-        self.counts['scenarios'] += 1
+        
+        # Statistics.
+        if sc.kw == 'scenario':
+            self.counts['scenarios'] += 1
 
     def end_scenario(self):
         self.__out.write('\n')
+        
+        # Suppress deferred exception.
+        self.deferred_exception = None
+    
+    #
+    # Print single row of Examples section.
+    #
+    def start_example_row(self, sc):
+        self.used, self.silent_steps, self.current_row = collections.defaultdict(set), True, sc.current_row
+        
+        if sc.current_example is self.current_example:
+            return
 
+        self.current_example = sc.current_example
+        kw, name = sc.current_example.kw_i18n, sc.current_example.name
+        if name is None:
+            name = ''
+        header, w = sc.current_example.table.columns, sc.current_example.table.widths
+        
+        self.__out.write(''.join([
+            # Print Example keyword and name
+            '\n', ' ' * self.scenario_indent, '%s %s' % (kw, name), '\n',
+        
+            # Show header of examples table.
+            self.row_start, ' | '.join(self.color_scheme.skipped_param(self.talign(f, w[f])) for f in header), ' |\n'
+        ]))
+    
+    def end_example_row(self):
+        self.silent_steps = False
+        cols, row, w = self.current_example.table.columns, self.current_row, self.current_example.table.widths
+        
+        formatted = [self.row_start, ]
+        for col in cols:
+            for status in self.used:
+                if col in self.used[status]:
+                    format = getattr(self.color_scheme, status)
+                    break
+            else:
+                format = lambda x: x
+
+            formatted.extend((
+                format(self.talign(self.current_row[col], w[col])), ' | ',
+            ))
+        formatted.append('\n')
+        self.__out.write(''.join(formatted))
+        if self.deferred_exception is not None:
+            self.__out.write(self.deferred_exception)
+            self.deferred_exception = None
+        
+        # Statistics.
+        self.counts['scenarios'] += 1
+
+    #
     # Handlers for reporting of steps execution.
+    #
     def start_step(self, section, step):
         self.last_step = StepContext(section, step)
     
@@ -188,7 +246,7 @@ class PrettyReporter(Reporter):
         formatted = [indent, regular(kw), ' ']
         formatted.append(
             regular(name) 
-                if highlight is None else 
+                if highlight is None or self.last_step.matchobj is None else 
             highlight_groups(
                 self.last_step.matchobj, 
                 regular, 
@@ -218,48 +276,71 @@ class PrettyReporter(Reporter):
                 ))
             else:
                 # Table
-                fields, rows, w = multi[0], multi[1:], {}
-                
-                # Calculate columns width.
-                for f in fields:
-                    w[f] = max(len(f), max(len(row[f]) for row in rows))
+                fields, rows, w = multi.columns, multi.rows, multi.widths
                 
                 # Table row prefix.
                 row_start = ' ' * self.table_indent + '| '
                 
                 # Print table.
-                table = [row_start, ' | '.join(self.talign(f, w[f]) for f in fields), ' |\n']
+                table = [row_start, ' | '.join(regular(self.talign(f, w[f])) for f in fields), ' |\n']
                 for row in rows:
                     table.extend(
-                        (row_start, ' | '.join(self.talign(row[f], w[f]) for f in fields), ' |\n')
+                        (row_start, ' | '.join(regular(self.talign(row[f], w[f])) for f in fields), ' |\n')
                     )                
-                formatted.append(regular(''.join(table)))
+                formatted.append(''.join(table))
         
         self.__out.write(''.join(formatted))
     
     def pass_step(self):
         self.format_last_step(self.color_scheme.passed, self.color_scheme.passed_param)
+        
+        # Statistics.
+        self.used['passed'] |= self.last_step.used
         self.counts['passed'] += 1
 
     def undefined_step(self):
         self.format_last_step(self.color_scheme.undefined)
+        
+        # Statistics.
+        self.used['undefined'] |= self.last_step.used
         self.counts['undefined'] += 1
 
     def skip_step(self):
         self.format_last_step(self.color_scheme.skipped, self.color_scheme.skipped_param)
+        
+        # Statistics.
+        self.used['skipped'] |= self.last_step.used
         self.counts['skipped'] += 1
+        
+    def outline_step(self):
+        self.format_last_step(self.color_scheme.skipped)
 
     def fail_step(self, exc):
         self.format_last_step(self.color_scheme.failed, self.color_scheme.failed_param)
+
         if self.backtrace:
-            indent = ' ' * self.traceback_indent
-            exc_str = []
-            for line in traceback.format_exc().split('\n'):
-                exc_str.append(indent + line)
-            self.__out.write(self.color_scheme.failed('\n'.join(exc_str)))
-            self.__out.write('\n')
+            error_message = traceback.format_exc().split('\n')
+        else:
+            error_message = traceback.format_exc(0).split('\n')[1:]
+            
+        indent = ' ' * self.traceback_indent
+        formatted = []
+        for line in error_message:
+            formatted.extend((indent + line, '\n'))
+        formatted = self.color_scheme.failed(''.join(formatted))
+        
+        if self.silent_steps:
+            self.deferred_exception = formatted
+        else:
+            self.__out.write(formatted)
+        
+        # Statistics.
+        self.used['failed'] |= self.last_step.used
         self.counts['failed'] += 1
 
     def pending_step(self):
         self.format_last_step(self.color_scheme.pending, self.color_scheme.pending_param)
+        
+        # Statistics.
+        self.used['pending'] |= self.last_step.used
         self.counts['pending'] += 1

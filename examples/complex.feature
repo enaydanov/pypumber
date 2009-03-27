@@ -4,7 +4,7 @@ Feature: Passing background with multiline args
     Given table
       |a|b|e|
       |c|d|f|
-    And multiline string
+    And multiline string  
     """
       I'm a cucumber and I'm okay. 
       I sleep all night and I test all day

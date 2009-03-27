@@ -1,8 +1,17 @@
 #!/usr/bin/env python
 
-import types, itertools, sys
-from peg import PEGParser
+__author__ = "Eugene Naydanov (e.najdanov@gmail.com)"
+__version__ = "$Rev: $"
+__date__ = "$Date: $"
+__copyright__ = "Copyright (c) 2009 Eugene Naydanov"
+__license__ = "Python"
+
+
+from peg import PEGParser, Node
 from feature_grammar import feature
+from table import Table
+from scenario_outline import ScenarioOutline
+
 
 class FeatureParser(PEGParser):
     _shadowed_non_terminals = [
@@ -12,7 +21,7 @@ class FeatureParser(PEGParser):
     ]
     _skipped_non_terminals = [
         'space', 'eol', 'white', 'comment', 'quotes', 'open_py_string', 
-        'close_py_string',
+        'close_py_string', 'eof',
     ]
     _string_non_terminals = [
         'header', 's', 'line_to_eol', 'background_keyword', 'examples_keyword', 
@@ -23,17 +32,27 @@ class FeatureParser(PEGParser):
         super(FeatureParser, self).__init__(feature)
 
         def string_non_terminal(subtree):
-            if subtree is not None:
-                return ''.join(subtree)
-            return subtree
+            """Handler for string non-terminals.
+            
+            Joins a list of strings or returns None if arg is None.
+            """
+            if subtree is not None: return ''.join(subtree)
         
         for nt in self._string_non_terminals:
             setattr(self, nt, string_non_terminal)
+
+    # Strip names.
+    def name(self, subtree):
+        if subtree is not None: return subtree.strip()
 
     #
     # Step.
     #
     def step_keyword(self, subtree):
+        """Handler for step keyword.
+        
+        Returns tuple: (kw, kw_i18n, lineno).
+        """
         # Import here because language will be defined in run-time.
         from i18n_grammar import _language
         return _language(subtree), subtree, self._source.lineno()
@@ -48,14 +67,13 @@ class FeatureParser(PEGParser):
             4. multi
             5. lineno
         """
-        rv = {}
-        rv['kw'] = subtree[0][1][0]
-        rv['kw_i18n'] = subtree[0][1][1]
-        rv['name'] = subtree[1][1]
-        rv['multi'] = subtree[2][1]
-        rv['lineno'] = subtree[0][1][2]
-        
-        return rv
+        return Node(
+            kw = subtree[0][1][0],
+            kw_i18n = subtree[0][1][1],
+            name = subtree[1][1],
+            multi = subtree[2][1],
+            lineno = subtree[0][1][2],
+        )
     
     #
     # Background.
@@ -64,19 +82,24 @@ class FeatureParser(PEGParser):
         """Fill the background structure.
         
         Background will have following properties:
-            1. kw_i18n
-            2. steps
+            1. kw
+            2. kw_i18n
+            3. steps
         """
-        rv = {}
-        rv['kw_i18n'] = subtree[0][1]
-        rv['steps'] = subtree[1][1]
-        
-        return rv
+        return Node(
+            kw = 'background',
+            kw_i18n = subtree[0][1],
+            steps = subtree[1][1],
+        )
     
     #
     # Scenario.
     #
     def scenario_keyword(self, subtree):
+        """Handler for scenario keyword.
+        
+        Returns tuple: (kw_i18n, lineno).
+        """
         return ''.join(subtree), self._source.lineno()
     
     def scenario(self, subtree):
@@ -90,13 +113,14 @@ class FeatureParser(PEGParser):
             5. tags
             6. lineno
         """
-        rv = {}
-        rv['kw'] = 'scenario'
-        rv['kw_i18n'] = subtree[1][1][0]
-        rv['name'] = subtree[2][1]
-        rv['steps'] = subtree[3][1]
-        rv['tags'] = subtree[0][1]
-        rv['lineno'] = subtree[1][1][1]
+        return Node(
+            kw = 'scenario',
+            kw_i18n = subtree[1][1][0],
+            name = subtree[2][1],
+            steps = subtree[3][1],
+            tags = subtree[0][1],
+            lineno = subtree[1][1][1],
+        )
         
         return rv
 
@@ -104,21 +128,26 @@ class FeatureParser(PEGParser):
     # Sceario Outline.
     #
     def examples(self, subtree):
-        """Fill the scenario structure.
+        """Fill the Examples structure.
         
-        Each scenario will have following properties:
-            1. kw_i18n
-            2. name
-            3. table
+        Examples will have following properties:
+            1. kw
+            2. kw_i18n
+            3. name
+            4. table
         """
-        rv = {}
-        rv['kw_i18n'] = subtree[0][1]
-        rv['name'] = subtree[1][1]
-        rv['table'] = subtree[2:]
-        
-        return rv
+        return Node(
+            kw = 'examples',
+            kw_i18n = subtree[0][1],
+            name = subtree[1][1],
+            table = subtree[2],
+        )
 
     def scenario_outline_keyword(self, subtree):
+        """Handler for scenario outline keyword.
+        
+        Returns tuple: (kw_i18n, lineno).
+        """
         return ''.join(subtree), self._source.lineno()
         
     def scenario_outline(self, subtree):
@@ -129,25 +158,32 @@ class FeatureParser(PEGParser):
             2. kw_i18n
             3. name
             4. steps
-            5. tags
-            6. lineno
+            5. examples
+            6. tags
+            7. lineno
         """
-        rv = {}
-        rv['kw'] = 'scenario_outline'
-        rv['kw_i18n'] = subtree[1][1][0]
-        rv['name'] = subtree[2][1]
-        rv['steps'] = subtree[3][1]
-        rv['examples'] = subtree[4][1]
-        rv['tags'] = subtree[0][1]
-        rv['lineno'] = subtree[1][1][1]
-        
+        rv = ScenarioOutline(
+            kw = 'scenario_outline',
+            kw_i18n = subtree[1][1][0],
+            name = subtree[2][1],
+            steps = subtree[3][1],
+            examples = subtree[4][1],
+            tags = subtree[0][1],
+            lineno = subtree[1][1][1],
+        )
+
+        # Backup templates.
+        for step in rv.steps:
+            step.name_template = step.name
+            step.multi_template = step.multi
+
         return rv
 
     #
     # Feature.
     #
     def feature(self, subtree):
-        return dict(subtree)
+        return Node(**dict(subtree))
 
     #
     # Table.
@@ -162,14 +198,9 @@ class FeatureParser(PEGParser):
     
     def table(self, subtree):
         try:
-            tbl = []
-            names = subtree[0]
-            tbl.append(tuple(names))
-            for row in subtree[1:]:
-                tbl.append(dict(zip(names, row)))
+            return Table(subtree)
         except:
-            raise SyntaxError()
-        return tbl
+            raise SyntaxError("unable to build a Table from the subtree: %s" % subtree)
 
 if __name__ == '__main__':
     pass

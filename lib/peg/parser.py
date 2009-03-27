@@ -13,7 +13,6 @@ __license__ = "Python"
 
 import types, re, sys
 
-from node import Node
 from source import Source, SourceType
 
 
@@ -47,6 +46,25 @@ class And(_Predicate):
 class Not(_Predicate):
     pass
 
+class Re(object):
+    def __init__(self, pattern):
+        self.pattern = pattern
+
+def compile_re(fn):
+    rv = fn()
+    if type(rv) in (types.TupleType, types.ListType):
+        compiled_patterns = type(rv)([
+            re.compile(r.pattern) if issubclass(r, Re) else r for r in rv
+        ])
+    elif issubclass(rv, Re):
+        compiled_patterns = re.compile(rv.pattern)
+    else:
+        return fn
+    
+    def tmp():
+        return compiled_patterns
+    
+    return tmp
 
 AnyChar = re.compile(r'.', re.DOTALL)
 
@@ -252,59 +270,6 @@ class PEGParser(object):
     def __call__(self, source, source_type=SourceType.GUESS):
         self._source = Source(source, source_type)
         try:
-            return Node(self._parse_pattern(self._grammar))
+            return self._parse_pattern(self._grammar)
         finally:
             self._source = None
-
-
-class CachingPEGParser(PEGParser):
-    def __init__(self, grammar):
-        PEGParser.__init__(self, grammar)
-        self._cache = {}
-    
-    def _non_terminal(self, pattern):
-        if (self._source.cur, pattern) in self._cache:
-            rv = self._cache[self._source.cur, pattern]
-            self._source.cur = rv[1]
-            return rv[0]
-
-        cur = self._source.cur
-        rv = PEGParser._parse_pattern(self, pattern())
-        if (cur, pattern) not in self._cache: 
-            self._cache[(cur, pattern)] = (rv, self._source.cur)
-        
-        return rv
-    
-    def __call__(self, source, source_type=SourceType.GUESS, cache=None):
-        if cache is not None:
-            self._cache = cache
-        try:
-            return PEGParser.__call__(self, source, source_type)
-        finally:
-            self._cache = {}
-        
-
-if __name__ == '__main__':
-    class Cache(object):
-        def __init__(self):
-            self.store = {}
-            self.getCount = {}
-        
-        def __contains__(self, key):
-            return key in self.store
-        
-        def __getitem__(self, key):
-            self.getCount[key] += 1
-            return self.store[key]
-        
-        def __setitem__(self, key, value):
-            if key in self.store:
-                raise Exception
-            self.store[key] = value
-            self.getCount[key] = 0
-
-    c = Cache()
-    p = CachingPEGParser(ZeroOrMore((And("dog"), "dog")))
-    print p("dogdog", cache=c)
-    print c.store
-    print c.getCount

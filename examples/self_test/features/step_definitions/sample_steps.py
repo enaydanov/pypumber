@@ -2,7 +2,7 @@ from decorators import *
 
 @Given(r'^passing$')
 def _(table):
-    assert table[1]['a'] == 'c' and table[1]['b'] == 'd'
+    assert table.rows[0]['a'] == 'c' and table.rows[0]['b'] == 'd'
 
 @Given(r'^failing$')
 def _(string):
@@ -20,8 +20,16 @@ def _(x):
 
 @Given(r'^multiline plus positional argument$')
 def _(*args):
-    assert args[0][1]['a'] == 'c'
+    assert args[0].rows[0]['a'] == 'c'
 
 @Given(r'^multiline plus keyword argument$')
 def _(**kw):
     pass
+
+@Given(r'^passing without a table$')
+def _():
+    pass
+
+@Given(r'^failing without a table$')
+def _():
+    raise Exception('failing step')

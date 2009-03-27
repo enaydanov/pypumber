@@ -133,12 +133,12 @@ class StepDefinitions(object):
             return func
         return registrator
 
-    def __add_hook(self, multiplexer):
+    def __add_hook(self, multiplexer, func):
         """Add hook to multiplexer."""
-        def registrator(func):
-            multiplexer.__outputs__.append(func)
-            return func
-        return registrator
+        multiplexer.__outputs__.append(func)
+        
+        return func
+        
     
     def __find_and_run(self, patterns, string, multi=None):
         """Find match for string in patterns and run handler."""
@@ -149,7 +149,7 @@ class StepDefinitions(object):
         ]
     
         if len(match) > 1:
-            raise AmbiguousString()
+            raise AmbiguousString("there is more than one match for '%s'" % string)
         if not match:
             raise MatchNotFound("match for '%s' not found" % string)
 
@@ -160,17 +160,13 @@ class StepDefinitions(object):
 
         # Ensure that *arg not presents in RE and pattern args.
         if func_args[1]:
-            if func_args[1] in re_dict.keys():
-                raise TypeError()
-            if func_args[1] in args:
-                raise TypeError()
+            if func_args[1] in re_dict.keys() or func_args[1] in args:
+                raise TypeError("positional argument '*%s' couldn't be used as parameter" % func_args[1])
         
         # Ensure that **kw not presents in RE and pattern args.
         if func_args[2]:
-            if func_args[2] in re_dict.keys():
-                raise TypeError()
-            if func_args[2] in args:
-                raise TypeError()
+            if func_args[2] in re_dict.keys() or func_args[2] in args:
+                raise TypeError("keyword argument '**%s' couldn't be used as parameter" % func_args[1])
         
         re_set = set(re_dict.keys())
         args_set = set(args)
@@ -178,7 +174,7 @@ class StepDefinitions(object):
         # Arguments names from RE can't be the same as arguments names passed
         # to pattern.
         if re_set & args_set:
-            raise TypeError()
+            raise TypeError("duplicate arguments in step definition")
         
         # Extract all unnamed groups from matchobj.
         re_dict_spans = [matchobj.span(k) for k in re_set]
@@ -228,7 +224,7 @@ class StepDefinitions(object):
             for name in names:
                 kw_args[name] = anon_groups.pop(0)
         except IndexError:
-            raise TypeError()
+            raise TypeError("too few parameters in step definition")
 
         # Build values for all non-keyword arguments.        
         values = []
@@ -236,7 +232,7 @@ class StepDefinitions(object):
             for arg in func_args[0]:
                 values.append(kw_args.pop(arg))
         except KeyError:
-            raise TypeError()
+            raise TypeError("unknown parameter '%s'" % arg)
  
         # If there are still some not assigned values put them to values.
         if len(anon_groups):
