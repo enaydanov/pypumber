@@ -3,9 +3,6 @@
 from cfg.set_defaults import set_defaults
 from step_definitions import MatchNotFound, Pending
 
-class ButFailed(Exception):
-    pass
-
 class Run(object):
     def __init__(self):
         set_defaults(self, 'scenario_names', 'strict', 'dry_run')
@@ -97,15 +94,9 @@ class Run(object):
                     reporter.skip_step()
                     continue
                 
-                but = (kw == 'but')
-                
                 # Run step definition.
                 try:
                     match()
-                    
-                    # If all fine, but we are running But step then raise ButFailed exception.
-                    if but:
-                        raise ButFailed(step.name)
                 except Pending, e:  # Pending step.
                     if self.strict:
                         reporter.fail_step(e)
@@ -113,11 +104,8 @@ class Run(object):
                     else:
                         reporter.pending_step()
                 except Exception, e:
-                    if but and not issubclass(e, ButFailed):  # But step passed.
-                        reporter.pass_step()
-                    else:
-                        reporter.fail_step(e)
-                        skip_following_steps = True
+                    reporter.fail_step(e)
+                    skip_following_steps = True
                 else:
                     reporter.pass_step()
             
