@@ -24,9 +24,10 @@ def tags(): # done
     """ tags <- white ts """
     return white, ts
 
+@compile_re
 def tag_name(): # done
     """ tag_name <- [^@\n\t ]+ """
-    return re.compile(r'[^@\n\t ]+')
+    return Re(r'[^@\n\t ]+')
     
 def tag(): # done
     """ tag <- '@' tag_name """

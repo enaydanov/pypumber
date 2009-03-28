@@ -212,8 +212,15 @@ class StepDefinitions(object):
         # Put named groups.
         kw_args.update(re_dict)
         
+        # Convert list of group numbers to list of it's values.
+        #
+        # There is a workaround for the MatchObject.group() which returns string for
+        # single argument and tuple for multiple arguments.
         if len(anon_groups):
-            anon_groups = list(matchobj.group(*anon_groups))
+            anon_groups = \
+                (list if len(anon_groups) > 1 else lambda x: [x])(
+                    matchobj.group(*anon_groups)
+                )
         
         # Use 'multi' as first unnamed group.
         if multi is not None:

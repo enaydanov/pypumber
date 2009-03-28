@@ -272,7 +272,7 @@ class TestNonTerminal(unittest.TestCase):
         self.assertEqual(self.parser._grammar, self.dog)
 
     def test_001_non_terminal(self):
-        self.assertEqual(self.parser(self.text)(), ('dog', "dog"))
+        self.assertEqual(self.parser(self.text), ('dog', "dog"))
         self.assertEqual(self.text.cur, 3)
 
     def test_002_non_terminal__shadowed(self):
@@ -344,33 +344,181 @@ class TestAlternative(unittest.TestCase):
 # TODO:
 class TestSequence(unittest.TestCase): pass
 
+class TestSequence(unittest.TestCase):
+    def test_000_re(self):
+        @compile_re
+        def a():
+            return Re(r'\d+')
+        
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(a()), type(re.compile('')))
+        self.assertEqual(a().pattern, r'\d+')        
+        self.assertEqual(a().match('18').group(), '18')
+        
+    #
+    # Tests for sequence
+    #
+    
+    def test_001_seq_without_re(self):
+        @compile_re
+        def a():
+            return 'aa', 'bbb', 'cccc'
 
-#~ class TestCachingPEGParser(unittest.TestCase):
-    #~ class Cache(object):
-        #~ def __init__(self):
-            #~ self.store = {}
-            #~ self.getCount = {}
-        
-        #~ def __contains__(self, key):
-            #~ return key in self.store
-        
-        #~ def __getitem__(self, key):
-            #~ self.getCount[key] += 1
-            #~ return self.store[key]
-        
-        #~ def __setitem__(self, key, value):
-            #~ if key in self.store:
-                #~ raise Exception
-            #~ self.store[key] = value
-            #~ self.getCount[key] = 0
+        pattern = a()
 
-    #~ def test_000_simple(self):
-        #~ cache = self.Cache()
-        #~ c = sys.getrefcount(cache)
-        #~ self.assertEqual(CachingPEGParser((And("dog"), "dog"))("dogy dog", cache=cache), "dog")
-        #~ self.assertEqual(c, sys.getrefcount(cache))
-        #~ self.assertEqual(cache.store[(0, "dog")][0], "dog")
-        #~ self.assertEqual(cache.getCount[(0, "dog")], 1)
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.TupleType)
+        self.assertEqual(pattern, ('aa', 'bbb', 'cccc'))
+    
+    def test_002_seq_with_one_re(self):
+        @compile_re
+        def a():
+            return 'aa', 'bbb', Re(r'\d+'), 'cccc'
+        
+        pattern = a()
+        
+        # sanity check
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.TupleType)
+        self.assertEqual(len(pattern), 4)
+        
+        # test for the first re
+        self.assertEqual(type(pattern[2]), type(re.compile('')))
+        self.assertEqual(pattern[2].pattern, r'\d+')
+        self.assertEqual(pattern[2].match('18').group(), '18')
+        
+        # test for rest elements
+        self.assertEqual((pattern[0], pattern[1], pattern[3]), ('aa', 'bbb', 'cccc'))
+        
+    def test_003_seq_with_two_re(self):
+        @compile_re
+        def a():
+            return 'aa', Re('\s+'), Re(r'\d+'), 'cccc'
+
+        pattern = a()
+
+        # sanity check
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.TupleType)
+        self.assertEqual(len(pattern), 4)        
+
+        # test for the first re
+        self.assertEqual(type(pattern[1]), type(re.compile('')))
+        self.assertEqual(pattern[1].pattern, r'\s+')
+        self.assertEqual(pattern[1].match('   ').group(), '   ')
+
+        # test for the second re
+        self.assertEqual(type(pattern[2]), type(re.compile('')))
+        self.assertEqual(pattern[2].pattern, r'\d+')
+        self.assertEqual(pattern[2].match('18').group(), '18')
+        
+        # test for rest elements
+        self.assertEqual((pattern[0], pattern[3]), ('aa', 'cccc'))
+        
+    def test_004_seq_with_only_re(self):
+        @compile_re
+        def a():
+            return Re(r'\s+'), Re(r'\d+')
+
+        pattern = a()
+
+        # sanity check
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.TupleType)
+        self.assertEqual(len(pattern), 2)
+
+        # test for the first re
+        self.assertEqual(type(pattern[0]), type(re.compile('')))
+        self.assertEqual(pattern[0].pattern, r'\s+')
+        self.assertEqual(pattern[0].match('   ').group(), '   ')
+
+        # test for the second re
+        self.assertEqual(type(pattern[1]), type(re.compile('')))
+        self.assertEqual(pattern[1].pattern, r'\d+')
+        self.assertEqual(pattern[1].match('18').group(), '18')
+
+    #
+    # Tests for alternative
+    # 
+
+    def test_005_alt_without_re(self):
+        @compile_re
+        def a():
+            return ['aa', 'bbb', 'cccc']
+
+        pattern = a()
+
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.ListType)
+        self.assertEqual(pattern, ['aa', 'bbb', 'cccc'])
+        
+    
+    def test_006_alt_with_one_re(self):
+        @compile_re
+        def a():
+            return ['aa', 'bbb', Re(r'\d+'), 'cccc']
+        
+        pattern = a()
+        
+        # sanity check
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.ListType)
+        self.assertEqual(len(pattern), 4)
+        
+        # test for the first re
+        self.assertEqual(type(pattern[2]), type(re.compile('')))
+        self.assertEqual(pattern[2].pattern, r'\d+')
+        self.assertEqual(pattern[2].match('18').group(), '18')
+        
+        # test for rest elements
+        self.assertEqual((pattern[0], pattern[1], pattern[3]), ('aa', 'bbb', 'cccc'))
+        
+    def test_007_alt_with_two_re(self):
+        @compile_re
+        def a():
+            return ['aa', Re('\s+'), Re(r'\d+'), 'cccc']
+
+        pattern = a()
+
+        # sanity check
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.ListType)
+        self.assertEqual(len(pattern), 4)        
+
+        # test for the first re
+        self.assertEqual(type(pattern[1]), type(re.compile('')))
+        self.assertEqual(pattern[1].pattern, r'\s+')
+        self.assertEqual(pattern[1].match('   ').group(), '   ')
+
+        # test for the second re
+        self.assertEqual(type(pattern[2]), type(re.compile('')))
+        self.assertEqual(pattern[2].pattern, r'\d+')
+        self.assertEqual(pattern[2].match('18').group(), '18')
+        
+        # test for rest elements
+        self.assertEqual((pattern[0], pattern[3]), ('aa', 'cccc'))
+        
+    def test_008_alt_with_only_re(self):
+        @compile_re
+        def a():
+            return [Re(r'\s+'), Re(r'\d+')]
+
+        pattern = a()
+
+        # sanity check
+        self.assertEqual(a.__name__, 'a')
+        self.assertEqual(type(pattern), types.ListType)
+        self.assertEqual(len(pattern), 2)
+
+        # test for the first re
+        self.assertEqual(type(pattern[0]), type(re.compile('')))
+        self.assertEqual(pattern[0].pattern, r'\s+')
+        self.assertEqual(pattern[0].match('   ').group(), '   ')
+
+        # test for the second re
+        self.assertEqual(type(pattern[1]), type(re.compile('')))
+        self.assertEqual(pattern[1].pattern, r'\d+')
+        self.assertEqual(pattern[1].match('18').group(), '18')
 
 
 if __name__ == '__main__':

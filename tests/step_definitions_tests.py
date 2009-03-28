@@ -261,18 +261,18 @@ class TestPending(unittest.TestCase):
         self.assertRaises(Pending, tmp)
 
     def test_007_setattr_func(self):
-        def deco(fn):
+        def deco(*args, **kwargs):
             def tmp(fn):
                 return fn
             return tmp
         
         self.p._set_sub_decorator('deco', deco)
         
-        @self.p.deco
+        @self.p.deco()
         def succ():
             pass
         
-        @self.p.deco
+        @self.p.deco()
         def fail():
             raise Exception
         
@@ -280,15 +280,15 @@ class TestPending(unittest.TestCase):
         self.assertRaises(Pending, fail)
 
     def test_008_setattr_lamda(self):
-        deco = lambda fn: lambda fn: fn
+        deco = lambda *args, **kwargs: (lambda fn: fn)
  
         self.p._set_sub_decorator('deco', deco)
         
-        @self.p.deco
+        @self.p.deco()
         def succ():
             pass
         
-        @self.p.deco
+        @self.p.deco()
         def fail():
             raise Exception
         
@@ -297,7 +297,7 @@ class TestPending(unittest.TestCase):
 
     def test_009_setattr_instance_method_of_oldstyle_class(self):
         class A:
-            def deco(self, fn):
+            def deco(self, *args, **kwargs):
                 def tmp(fn):
                     return fn
                 return tmp
@@ -305,11 +305,11 @@ class TestPending(unittest.TestCase):
         a = A()
         self.p._set_sub_decorator('deco', a.deco)
         
-        @self.p.deco
+        @self.p.deco()
         def succ():
             pass
         
-        @self.p.deco
+        @self.p.deco()
         def fail():
             raise Exception
         
@@ -318,7 +318,7 @@ class TestPending(unittest.TestCase):
     
     def test_010_setattr_instance_method_of_newstyle_class(self):
         class A(object):
-            def deco(self, fn):
+            def deco(self, *args, **kwargs):
                 def tmp(fn):
                     return fn
                 return tmp
@@ -326,11 +326,11 @@ class TestPending(unittest.TestCase):
         a = A()
         self.p._set_sub_decorator('deco', a.deco)
         
-        @self.p.deco
+        @self.p.deco()
         def succ():
             pass
         
-        @self.p.deco
+        @self.p.deco()
         def fail():
             raise Exception
         

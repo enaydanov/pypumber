@@ -11,7 +11,7 @@ __copyright__ = "Copyright (c) 2009 Eugene Naydanov"
 __license__ = "Python"
 
 
-import types, re, sys
+import types, re, sys, functools
 
 from source import Source, SourceType
 
@@ -48,19 +48,20 @@ class Not(_Predicate):
 
 class Re(object):
     def __init__(self, pattern):
-        self.pattern = pattern
+        self.re_pattern = pattern
 
 def compile_re(fn):
     rv = fn()
     if type(rv) in (types.TupleType, types.ListType):
         compiled_patterns = type(rv)([
-            re.compile(r.pattern) if issubclass(r, Re) else r for r in rv
+            (re.compile(r.re_pattern) if isinstance(r, Re) else r) for r in rv
         ])
-    elif issubclass(rv, Re):
-        compiled_patterns = re.compile(rv.pattern)
+    elif isinstance(rv, Re):
+        compiled_patterns = re.compile(rv.re_pattern)
     else:
         return fn
     
+    @functools.wraps(fn)
     def tmp():
         return compiled_patterns
     

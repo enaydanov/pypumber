@@ -19,9 +19,10 @@ def cell():
     """ cell <-  (!('|' | eol) .)* """
     return ZeroOrMore(Not(['|', eol]), AnyChar)
 
+@compile_re
 def space():
     """ space <- [ \t] """
-    return re.compile(r'[ \t]')
+    return Re(r'[ \t]')
 
 def eol():
     """ eol <- "\n" | ("\r" "\n"?) """
