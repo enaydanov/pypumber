@@ -1,10 +1,10 @@
 from decorators import *
 
-@Given(r'^passing$')
+@Given(r'^passing$', table=multi)
 def _(table):
     assert table.rows[0]['a'] == 'c' and table.rows[0]['b'] == 'd'
 
-@Given(r'^failing$')
+@Given(r'^failing$', string=multi)
 def _(string):
     assert len(string) == 1
 

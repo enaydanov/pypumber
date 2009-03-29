@@ -11,7 +11,7 @@ __copyright__ = "Copyright (c) 2009 Eugene Naydanov"
 __license__ = "Python"
 
 
-import re, os.path, types, inspect
+import re, os.path, types, inspect, collections
 from functools import partial
 from find_files import find_files
 from cfg.set_defaults import set_defaults
@@ -56,26 +56,15 @@ class Pending(Exception):
             return pending
         setattr(self, name, kw)
 
-_ARG_FLAG = 0x04
-_KW_FLAG = 0x08
 
-def _get_func_args(f):
-    # TODO: remove this. Look 'inspect' module.
-    arg_name = None
-    kw_name = None
-    argcount = f.func_code.co_argcount
-    varnames = f.func_code.co_varnames
-    flags = f.func_code.co_flags
-    names = varnames[:argcount]
-    
-    if flags & _ARG_FLAG:
-        arg_name = varnames[argcount]
-        argcount += 1
-    if flags & _KW_FLAG:
-        kw_name = varnames[argcount]
-        argcount += 1
-    
-    return (names, arg_name, kw_name, argcount) 
+class Value(object):
+    def __init__(self, value=None, type='value'):
+        if isinstance(value, Value):
+            self.value = value.value
+            self.type = value.type
+        else:
+            self.value = value
+            self.type = type
 
 
 class Match(object):
@@ -104,7 +93,11 @@ class StepDefinitions(object):
     def __init__(self):
         # Options.
         set_defaults(self, 'path', 'excludes', 'require', 'guess', 'verbose')
+        
+        # Special objects:
         self.__pending = Pending()
+        self.__multi = Value(type='multi')
+        self.__callback = lambda x: Value(value=x, type='callback')
 
         # Create mappings, decorators and runners for step definitions.
         for kw in _STEP_KEYWORDS:
@@ -117,20 +110,87 @@ class StepDefinitions(object):
             # Make decorators and runners.
             setattr(self, deco_name, partial(self.__add_rule, map))
             self.__pending._set_sub_decorator(deco_name, getattr(self, deco_name))
-            setattr(self, kw, partial(self.__find_and_run, map))
+            setattr(self, kw, partial(self.__find_match, map))
         
         # Create multiplexers and decorators for hooks.
         for hook in _HOOKS:
             setattr(self, hook, Multiplexer())
             setattr(self, hook.capitalize(), partial(self.__add_hook, getattr(self, hook)))
     
-    def __add_rule(self, patterns, string, *args):
+    def __add_rule(*args, **step_defaults):
         """Add rule for string to patterns (which is one of the mappings)."""
-        if len(set(args)) != len(args):
-            raise TypeError('duplicate argument names in step definition: %s' % args)
+
+        # Compile pattern.
+        self, patterns, pattern = args[0], args[1], re.compile(args[2])
+        args = args[3:]
+        
+        # Ensure that there is no any name duplication in pattern and args.
+        args_set = set(args)
+        if len(args_set) != len(args) or args_set.intersection(pattern.groupindex):
+            raise TypeError('duplicate argument names in step definition')
+
+        # Make extended version of pattern.groupindex
+        bindings = dict(zip(
+            args, 
+            sorted(set(
+                xrange(1, len(pattern.groupindex) + len(args) + 1)
+            ).difference(
+                pattern.groupindex.values()
+            ))
+        ))
+        bindings.update(pattern.groupindex)
+        
+        # Add step defaults to bindings.
+        for name, value in step_defaults.items():
+            if name in bindings:
+                raise TypeError('duplicate argument names in step definition')
+            bindings[name] = Value(value)
+        
         def registrator(func):
-            patterns[re.compile(string)] = (func, args)
+            """Register function as handler for pattern in corresponded map.
+            
+            Also, bind default func arguments.
+            """
+            # Get the names and default values of a function's arguments.
+            func_args, func_varargs, func_varkw, func_defaults = inspect.getargspec(func)
+            
+            func_bindings = {}
+            
+            if func_defaults is not None:
+                # Populate func bindings with default function values.
+                def assign_default_values(tree, values):
+                    for el in tree:
+                        value = values.next()
+                        if type(el) == types.ListType:
+                            assign_default_values(el, iter(value))
+                        else:
+                            func_bindings[el] = Value(value)
+                assign_default_values(func_args[-len(func_defaults):], iter(func_defaults))
+            
+            # Merge func bindings with step definition bindings.
+            func_bindings.update(bindings)
+            
+            # Show warnings.
+            if self.verbose:
+                if func_varargs in func_bindings:
+                    sys.stderr.write(
+                        "%s:%d : "
+                        "WARNING! You've used name of positional argument for bindings: '*%s'." 
+                        "Did you really want this?\n" \
+                        % (inspect.getsourcefile(func), inspect.getsourcelines()[1], func_varargs)
+                    )
+                if func_varkw in func_bindings:
+                    sys.stderr.write(
+                        "%s:%d : "
+                        "WARNING! You've used name of keyword argument for bindings: '**%s'." 
+                        "Did you really want this?\n" \
+                        % (inspect.getsourcefile(func), inspect.getsourcelines()[1], func_varargs)
+                    )
+            
+            patterns[pattern] = (func, func_args, func_bindings)
+
             return func
+        
         return registrator
 
     def __add_hook(self, multiplexer, func):
@@ -140,112 +200,87 @@ class StepDefinitions(object):
         return func
         
     
-    def __find_and_run(self, patterns, string, multi=None):
+    def __find_match(self, patterns, string, multi=None):
         """Find match for string in patterns and run handler."""
-        match = [ (f[0], f[1], m) 
+        match = [ (f[0], f[1], f[2],  m) 
             for f, m in [
                 (f, p.search(string)) for p, f in patterns.items()
             ] if m
         ]
     
         if len(match) > 1:
+            # TODO: '--guess'ing
             raise AmbiguousString("there is more than one match for '%s'" % string)
         if not match:
             raise MatchNotFound("match for '%s' not found" % string)
 
-        func, args, matchobj, = match[0]
-        re_dict = matchobj.groupdict()
+        # Parameters of matched step definition.
+        func, func_args, match_bindings, matchobj = match[0]
         
-        func_args = _get_func_args(func)
-
-        # Ensure that *arg not presents in RE and pattern args.
-        if func_args[1]:
-            if func_args[1] in re_dict.keys() or func_args[1] in args:
-                raise TypeError("positional argument '*%s' couldn't be used as parameter" % func_args[1])
+        # Make list of unbound values.
+        unbound_groups = sorted(
+            set(
+                xrange(1, len(matchobj.groups()) + 1)
+            ).difference(
+                match_bindings.values()
+            )
+        )
         
-        # Ensure that **kw not presents in RE and pattern args.
-        if func_args[2]:
-            if func_args[2] in re_dict.keys() or func_args[2] in args:
-                raise TypeError("keyword argument '**%s' couldn't be used as parameter" % func_args[1])
+        # Use defaultdict to pop elements from unbound_values if some argument not in match_bindings.
+        bindings = collections.defaultdict(lambda: unbound_groups.pop(0), match_bindings)
         
-        re_set = set(re_dict.keys())
-        args_set = set(args)
-        
-        # Arguments names from RE can't be the same as arguments names passed
-        # to pattern.
-        if re_set & args_set:
-            raise TypeError("duplicate arguments in step definition")
-        
-        # Extract all unnamed groups from matchobj.
-        re_dict_spans = [matchobj.span(k) for k in re_set]
-        
-        all_spans = {}
-        for k in range(1, len(matchobj.groups())+1):
-            span = matchobj.span(k)
-            if span in all_spans:
-                all_spans[span].append(k)
-            else:
-                all_spans[span] = [k]
-        
-        for span in re_dict_spans:
-            all_spans[span].pop()
-            
-        anon_groups = []
-        for v in all_spans.values():
-            anon_groups.extend(v)
-        anon_groups.sort()
-
-        # Build names for unnamed groups.
-        #
-        # In first place, arguments mentioned in pattern, then arguments from
-        # function.
-        undefined_args = set(func_args[0]) - re_set - args_set
-        names = list(args) + [x for x in func_args[0] if x in undefined_args]
-
-        # If function has defaults, init them first.
-        kw_args = {}
-        if func.func_defaults is not None:
-            defaults = list(func.func_defaults)
-            for name in func_args[0][-len(defaults):]:
-                kw_args[name] = defaults.pop(0)
-                
-        # Put named groups.
-        kw_args.update(re_dict)
-        
-        # Convert list of group numbers to list of it's values.
-        #
-        # There is a workaround for the MatchObject.group() which returns string for
-        # single argument and tuple for multiple arguments.
-        if len(anon_groups):
-            anon_groups = \
-                (list if len(anon_groups) > 1 else lambda x: [x])(
-                    matchobj.group(*anon_groups)
+        def get_value(attr):
+            value_handlers = collections.defaultdict(lambda: (lambda x: x.value), {
+                'multi': lambda x: multi,
+                'value': lambda x: x.value,
+                'callback': lambda x: x.value(),
+            })
+            try:
+                value = bindings[attr]
+                if isinstance(value, Value):
+                    return value_handlers[value.type](value)
+                return matchobj.group(value)
+            except IndexError:
+                raise TypeError("%s:%d: unbound variable '%s' for function '%s'" \
+                    % (inspect.getsourcefile(func), inspect.getsourcelines(func)[1], attr, func.__name__)
                 )
-        
-        # Use 'multi' as first unnamed group.
-        if multi is not None:
-            anon_groups.insert(0, multi)
-        
-        # Put anon_groups and names together.
-        try:
-            for name in names:
-                kw_args[name] = anon_groups.pop(0)
-        except IndexError:
-            raise TypeError("too few parameters in step definition")
 
-        # Build values for all non-keyword arguments.        
+        def make_anon_tuple(tree):
+            rv = []
+            for el in tree:
+                if type(el) == types.ListType:
+                    rv.append(make_anon_tuple(el))
+                else:
+                    rv.append(get_value(el))
+                del(bindings[el])
+
+            return rv
+        
+        # Positional arguments.
         values = []
-        try:
-            for arg in func_args[0]:
-                values.append(kw_args.pop(arg))
-        except KeyError:
-            raise TypeError("unknown parameter '%s'" % arg)
- 
-        # If there are still some not assigned values put them to values.
-        if len(anon_groups):
-            values.extend(anon_groups)
-
-        return Match(func, values, kw_args, matchobj)
+        
+        # Substitute values.
+        for arg in func_args:
+            if type(arg) == types.ListType:
+                values.append(make_anon_tuple(arg))
+            else:
+                values.append(get_value(arg))
+                del(bindings[arg])
+        
+        # All unused groups pack into positional argument.
+        if len(unbound_groups):
+            (values.append if len(unbound_groups) == 1 else values.extend)(                    
+                matchobj.group(*unbound_groups)
+            )
+        
+        # Sanitize object.
+        bindings.default_factory = None
+        
+        # Substitute values for rest kw arguments.
+        for k in bindings:
+            bindings[k] = get_value(k)
+        
+        return Match(func, values, bindings, matchobj)
 
 
     def load(self):
@@ -269,7 +304,11 @@ class StepDefinitions(object):
         for kw in _STEP_KEYWORDS + _HOOKS:
             deco = kw.capitalize()
             setattr(decorators, deco, getattr(self, deco))
+        
+        # Set up special objects:
         setattr(decorators, 'pending', self.__pending)
+        setattr(decorators, 'multi', self.__multi)
+        setattr(decorators, 'callback', self.__callback)
         
         assert type(paths) == types.ListType
         

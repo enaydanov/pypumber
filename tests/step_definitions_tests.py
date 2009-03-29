@@ -7,90 +7,20 @@ if __name__ == '__main__':
     sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'lib')))
 
 from step_definitions import * 
-from step_definitions import _get_func_args as get_func_args
 from cfg.options import Options
 
 step_definitions_path = os.path.join(os.path.dirname(__file__), 'step_definitions')
 
-class TestGetFuncArgs(unittest.TestCase):
-    def test_000_noargs(self):
-        def tmp():
-            return 1
-        self.assertEqual(get_func_args(tmp), ((), None, None, 0))
 
-    def test_001_one_arg(self):
-        def tmp(a):
-            return a
-        self.assertEqual(get_func_args(tmp), (('a',), None, None, 1))
-
-    def test_002_two_args(self):
-        def tmp(a, b):
-            c = a + b
-            return c
-        self.assertEqual(get_func_args(tmp), (('a', 'b'), None, None, 2))
-
-    def test_003_only_arg(self):
-        def tmp(*arg):
-            c = len(arg)
-            return c
-        self.assertEqual(get_func_args(tmp), ((), 'arg', None, 1))
-
-    def test_004_one_arg_with_arg(self):
-        def tmp(a, *arg):
-            c = a + len(arg)
-            return c
-        self.assertEqual(get_func_args(tmp), (('a',), 'arg', None, 2))
-
-    def test_005_two_args_with_arg(self):
-        def tmp(a, b, *arg):
-            c = a + b + len(arg)
-            return c
-        self.assertEqual(get_func_args(tmp), (('a', 'b'), 'arg', None, 3))
-
-    def test_006_only_kw(self):
-        def tmp(**kw):
-            c = len(kw.items())
-            return c
-        self.assertEqual(get_func_args(tmp), ((), None, 'kw', 1))
-
-    def test_007_one_arg_with_kw(self):
-        def tmp(a, **kw):
-            c = a + len(kw.items())
-            return c
-        self.assertEqual(get_func_args(tmp), (('a',), None, 'kw', 2))
-
-    def test_008_two_args_with_kw(self):
-        def tmp(a, b, **kw):
-            c = a + b + len(kw.items())
-            return c
-        self.assertEqual(get_func_args(tmp), (('a', 'b'), None, 'kw', 3))
-
-    def test_009_only_arg_and_kw(self):
-        def tmp(*arg, **kw):
-            c = len(arg) + len(kw.items())
-            return c
-        self.assertEqual(get_func_args(tmp), ((), 'arg', 'kw', 2))
-
-    def test_010_one_arg_arg_and_kw(self):
-        def tmp(a, *arg, **kw):
-            c = a + len(arg) + len(kw.items())
-            return c
-        self.assertEqual(get_func_args(tmp), (('a',), 'arg', 'kw', 3))
-
-    def test_011_two_args_arg_and_kw(self):
-        def tmp(a, b, *arg, **kw):
-            c = a + b + len(arg) + len(kw.items())
-            return c
-        self.assertEqual(get_func_args(tmp), (('a', 'b'), 'arg', 'kw', 4))
-
-
-class TestStepDefinitions(unittest.TestCase):
+class StepDefaultsFixture(unittest.TestCase):
     def setUp(self):
         self.r = StepDefinitions()
     
     def tearDown(self):
         del(self.r)
-    
+
+
+class TestStepDefinitions(StepDefaultsFixture):
     def test_000_creation(self):
         self.assert_(hasattr(self.r, 'Given'))
         self.assert_(hasattr(self.r, 'given'))
@@ -152,19 +82,39 @@ class TestStepDefinitions(unittest.TestCase):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)')
         def tmp(a, b, c):
             return int(a) + int(b) + int(c)
-        self.assertEqual(self.r.given("1 + 2 + 3")(), 6)
+        self.assertEqual(self.r.given("10 + 20 + 30")(), 60)
 
     def test_010_given_rule_default_list_args(self):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)')
         def tmp(*arg):
             return sum([int(a) for a in arg])
-        self.assertEqual(self.r.given("1 + 2 + 3")(), 6)
+        self.assertEqual(self.r.given("10 + 20 + 30")(), 60)
 
     def test_011_given_rule_kw_arg(self):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)', 'a', 'b', 'c')
         def tmp(**arg):
             return sum([int(a) for a in arg.values()])
-        self.assertEqual(self.r.given("1 + 2 + 3")(), 6)
+        self.assertEqual(self.r.given("10 + 20 + 30")(), 60)
+    
+    def test_012_given_rule_anon_tuples(self):
+        @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)', 'a', 'b', 'c')
+        def tmp(a, (b, c)):
+            return int(a) + int(b) + int(c)
+        self.assertEqual(self.r.given("10 + 20 + 30")(), 60)
+
+    def test_013_given_plus_one_pos_arg(self):
+        @self.r.Given(r'(\d+) \+ (\d+)')
+        def tmp(a, *args):
+            return int(a) + sum([int(d) for d in args])
+        self.assertEqual(self.r.given("99 + 1")(), 100)
+
+
+    def test_013_given_plus_two_pos_arg(self):
+        @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)')
+        def tmp(a, *args):
+            return int(a) + sum([int(d) for d in args])
+        self.assertEqual(self.r.given("99 + 1 + 100")(), 200)
+        
     
     def test_008_given_rule_match_not_found(self):
         self.assertRaises(MatchNotFound, self.r.given, "10 - 5")
@@ -337,6 +287,100 @@ class TestPending(unittest.TestCase):
         self.assertRaises(Pending, succ)
         self.assertRaises(Pending, fail)
 
+
+class TestStepDefaults(StepDefaultsFixture):
+    def test_000_without(self):
+        @self.r.Given(r'some rule')
+        def _():
+            return 'in some rule'
+       
+        self.assertEqual(self.r.given('some rule')(), 'in some rule')
+    
+    def test_001_with_one(self):
+        @self.r.Given(r'some rule', arg='value')
+        def _(arg):
+            return 'in some rule with arg == %s' % arg
+       
+        self.assertEqual(self.r.given('some rule')(), 'in some rule with arg == value')
+    
+    def test_002_with_wrong_name(self):
+        @self.r.Given(r'some rule', xxx='value')
+        def _(arg):
+            return 'in some rule with arg == %s' % arg
+       
+        self.assertRaises(TypeError, self.r.given, 'some rule')
+
+    
+    def test_003_with_two(self):
+        @self.r.Given(r'some rule', arg1='value1', arg2='value2')
+        def _(arg1, arg2):
+            return 'in some rule with arg1 == %s, arg2 == %s' % (arg1, arg2)
+       
+        self.assertEqual(self.r.given('some rule')(), 
+            'in some rule with arg1 == value1, arg2 == value2')
+    
+    def test_004_plus_named_group(self):
+        @self.r.Given(r'some rule with (?P<group>named group)', arg='value')
+        def _(arg, group):
+            return 'in some rule with arg == %s, group == %s' % (arg, group)
+       
+        self.assertEqual(self.r.given('some rule with named group')(), 
+            'in some rule with arg == value, group == named group')
+
+    def test_005_plus_named_group_same_name(self):
+        def tmp():
+            @self.r.Given(r'some rule with (?P<arg>named group)', arg='value')
+            def _(arg):
+                return 'in some rule with arg == %s' % arg
+            
+        self.assertRaises(TypeError, tmp)
+
+    def test_006_plus_args(self):
+        @self.r.Given(r'some rule with (named group)', 'group', arg='value')
+        def _(arg, group):
+            return 'in some rule with arg == %s, group == %s' % (arg, group)
+       
+        self.assertEqual(self.r.given('some rule with named group')(), 
+            'in some rule with arg == value, group == named group')
+
+    def test_007_plus_named_group_same_name(self):
+        def tmp():
+            @self.r.Given(r'some rule with (named group)', 'arg', arg='value')
+            def _(arg):
+                return 'in some rule with arg == %s' % arg
+            
+        self.assertRaises(TypeError, tmp)
+
+    def test_008_plus_unnamed_first(self):
+        @self.r.Given(r'some rule with (named group)', arg='value')
+        def _(group, arg):
+            return 'in some rule with arg == %s, group == %s' % (arg, group)
+        
+        self.assertEqual(self.r.given('some rule with named group')(), 
+            'in some rule with arg == value, group == named group')
+
+    def test_009_plus_unnamed_last(self):
+        @self.r.Given(r'some rule with (named group)', arg='value')
+        def _(arg, group):
+            return 'in some rule with arg == %s, group == %s' % (arg, group)
+       
+        self.assertEqual(self.r.given('some rule with named group')(), 
+            'in some rule with arg == value, group == named group')
+
+    def test_010_plus_defaults(self):
+        @self.r.Given(r'some rule with named group', arg='value')
+        def _(arg, group='named group'):
+            return 'in some rule with arg == %s, group == %s' % (arg, group)
+        
+        self.assertEqual(self.r.given('some rule with named group')(), 
+            'in some rule with arg == value, group == named group')
+
+    def test_011_plus_kwargs(self):
+        @self.r.Given(r'some rule with arg', arg='value')
+        def _(**kwargs):
+            return 'in some rule with arg == %s' % kwargs['arg']
+        
+        self.assertEqual(self.r.given('some rule with arg')(), 'in some rule with arg == value')
 
 if __name__ == '__main__':
     unittest.main()
