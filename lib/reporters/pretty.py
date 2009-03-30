@@ -66,7 +66,7 @@ class PrettyReporter(Reporter):
         for s in ['failed', 'skipped', 'undefined', 'pending', 'passed', ]:
             if self.counts[s]:
                 formatted.append(getattr(self.color_scheme, s)(
-                    '%d step%s %s\n' % (self.counts[s], 's' if self.counts[s] != 1 else '', s)
+                    '%d %s step%s\n' % (self.counts[s], s, 's' if self.counts[s] != 1 else '')
                 ))
         self.__out.write(''.join(formatted))
     

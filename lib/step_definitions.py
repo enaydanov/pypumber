@@ -216,7 +216,7 @@ class StepDefinitions(object):
 
         # Parameters of matched step definition.
         func, func_args, match_bindings, matchobj = match[0]
-        
+
         # Make list of unbound values.
         unbound_groups = sorted(
             set(
