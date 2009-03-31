@@ -105,7 +105,7 @@ class Match(object):
         actual_value = self.fn(*self.args, **self.kwargs)
         
         if hasattr(self, 'expected_value'):
-            assert self.expected_value == actual_value
+            assert self.expected_value == actual_value, 'expected value "%s" not equal to "%s"' % (self.expected_value, actual_value)
         
         return actual_value
 
