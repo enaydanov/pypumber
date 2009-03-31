@@ -109,28 +109,29 @@ class TestStepDefinitions(StepDefaultsFixture):
         self.assertEqual(self.r.given("99 + 1")(), 100)
 
 
-    def test_013_given_plus_two_pos_arg(self):
+    def test_014_given_plus_two_pos_arg(self):
         @self.r.Given(r'(\d+) \+ (\d+) \+ (\d+)')
         def tmp(a, *args):
             return int(a) + sum([int(d) for d in args])
         self.assertEqual(self.r.given("99 + 1 + 100")(), 200)
         
     
-    def test_008_given_rule_match_not_found(self):
+    def test_015_given_rule_match_not_found(self):
         self.assertRaises(MatchNotFound, self.r.given, "10 - 5")
         
-    def test_009_given_rule_redefine(self):
-        @self.r.Given(r'(\d+) - (\d+)', 'b', 'a')
-        def sum1(a, b):
-            return int(a) - int(b)
+    def test_016_given_rule_redefine(self):
+        def tmp():
+            @self.r.Given(r'(\d+) - (\d+)', 'b', 'a')
+            def sum1(a, b):
+                return int(a) - int(b)
+            
+            @self.r.Given(r'(\d+) - (\d+)', 'b', 'a')
+            def sum2(a, b):
+                return int(a) + int(b)
         
-        @self.r.Given(r'(\d+) - (\d+)', 'b', 'a')
-        def sum2(a, b):
-            return int(a) + int(b)
-        
-        self.assertEqual(self.r.given("10 - 5")(), 15)
+        self.assertRaises(Redundant, tmp)
 
-    def test_010_given_rule_ambiguous(self):
+    def test_017_given_rule_ambiguous(self):
         @self.r.Given(r'(\d+) - (\d+)', 'b', 'a')
         def sum1(a, b):
             return int(a) - int(b)
@@ -141,21 +142,17 @@ class TestStepDefinitions(StepDefaultsFixture):
         
         self.assertRaises(AmbiguousString, self.r.given, "10 - 5")
 
-    #~ def test_020_load_from_file(self):
-        #~ self.r.load_from_file(os.path.join(os.path.dirname(__file__), 'step_definitions', 'example_import.py'))
-        #~ self.assertEqual(self.r.given("some string"), "tmp")
-
-    def test_020_load__file(self):
+    def test_018_load__file(self):
         self.r.path.append(os.path.join(step_definitions_path, 'example_import.py'))
         self.r.load()
         self.assertEqual(self.r.given("some string")(), "tmp")
 
-    def test_021_load__dir(self):
+    def test_019_load__dir(self):
         self.r.path.append(step_definitions_path)
         self.r.load()
         self.assertEqual(self.r.given("some string")(), "tmp")
 
-    def test_022_load__multiple(self):
+    def test_020_load__multiple(self):
         opt = Options(path=step_definitions_path)
         opt(self.r)
         self.r.load()

@@ -11,17 +11,33 @@ __copyright__ = "Copyright (c) 2009 Eugene Naydanov"
 __license__ = "Python"
 
 
-import re, os.path, types, inspect, collections
+import re, os.path, types, inspect, collections, itertools
+
 from functools import partial
 from find_files import find_files
 from cfg.set_defaults import set_defaults
 from multiplexer import Multiplexer
 from split_feature_path import split_feature_path
+from objects_space import ObjectsSpace
 
 
 class AmbiguousString(Exception): 
     """Exception: more than one match found."""
-    pass
+    # TODO: format of lines: keyword, pattern, line
+    def __init__(self, string, matches, guess):
+        rv = [
+            'Ambiguous match of "%s":\n\n' % string, 
+            '\n'.join((m[3].re.pattern for m in matches)), 
+            '\n\n',
+        ]
+        if not guess:
+            rv.append('You can run again with --guess to make Pypumber be more smart about it\n')
+        Exception.__init__(self, ''.join(rv))
+
+class Redundant(Exception):
+    """Raised when 2 or more StepDefinition have the same Regexp"""
+    def __init__(self, string):
+        Exception.__init__(self, 'Multiple step definitions have the same Regexp: "%s"\n' % string)
 
 class MatchNotFound(Exception): 
     """Exception: match not found."""
@@ -36,6 +52,7 @@ class Pending(Exception):
     def __call__(self, fn=None):
         if fn is None:
             raise self
+        
         def tmp(*args, **kwargs):
             try:
                 fn(*args, **kwargs)
@@ -43,9 +60,8 @@ class Pending(Exception):
                 raise self
             else:
                 raise Pending("Expected pending '%s' to fail. No Error was raised. No longer pending?" % self.pending_message)
-        setattr(tmp, 'source_file', inspect.getsourcefile(fn))
-        setattr(tmp, 'source_line', inspect.getsourcelines(fn)[1])
-        
+        setattr(tmp, '__decorated__', fn)
+                
         return tmp
 
     def _set_sub_decorator(self, name, kw_deco):
@@ -57,32 +73,47 @@ class Pending(Exception):
         setattr(self, name, kw)
 
 
-class Value(object):
+class _Value(object):
     def __init__(self, value=None, type='value'):
-        if isinstance(value, Value):
-            self.value = value.value
-            self.type = value.type
-        else:
-            self.value = value
-            self.type = type
+        self.value = value
+        self.type = type
+
+def Value(value=None, type='value'):
+    if isinstance(value, _Value):
+        return value
+    return _Value(value, type)
 
 
 class Match(object):
     def __init__(self, fn, args, kwargs, matchobj):
         self.fn, self.args, self.kwargs, self.matchobj = fn, args, kwargs, matchobj
         
-        if hasattr(fn, 'source_file'):
-            self.source_file = fn.source_file
-        else:
-            self.source_file = inspect.getsourcefile(fn)
-            
-        if hasattr(fn, 'source_line'):
-            self.source_line = fn.source_line
-        else:
-            self.source_line = inspect.getsourcelines(fn)[1]
+        if hasattr(fn, '__decorated__'):
+            fn = getattr(fn, '__decorated__')
+
+        self.source_file = inspect.getsourcefile(fn)
+        self.source_line = inspect.getsourcelines(fn)[1]
+        
+        # Extract expected value.
+        arg_name = getattr(fn, '__assert_returns__', None)
+        if arg_name is not None:
+            if arg_name not in self.kwargs:
+                raise TypeError("unexpected keyword argument '%s'" % arg_name)
+            self.expected_value = self.kwargs.pop(arg_name)
 
     def __call__(self):
-        return self.fn(*self.args, **self.kwargs)
+        actual_value = self.fn(*self.args, **self.kwargs)
+        
+        if hasattr(self, 'expected_value'):
+            assert self.expected_value == actual_value
+        
+        return actual_value
+
+def assert_returns(arg):
+    def tmp(fn):
+        setattr(fn, '__assert_returns__', arg)
+        return fn
+    return tmp
 
 
 _STEP_KEYWORDS = ['given', 'when', 'then']
@@ -98,6 +129,11 @@ class StepDefinitions(object):
         self.__pending = Pending()
         self.__multi = Value(type='multi')
         self.__callback = lambda x: Value(value=x, type='callback')
+        self.__world = ObjectsSpace()
+        self.__universe = ObjectsSpace()
+        
+        # Castings.
+        self.__castings = {}
 
         # Create mappings, decorators and runners for step definitions.
         for kw in _STEP_KEYWORDS:
@@ -117,14 +153,19 @@ class StepDefinitions(object):
             setattr(self, hook, Multiplexer())
             setattr(self, hook.capitalize(), partial(self.__add_hook, getattr(self, hook)))
     
+
     def __add_rule(*args, **step_defaults):
         """Add rule for string to patterns (which is one of the mappings)."""
 
-        # Compile pattern.
-        self, patterns, pattern = args[0], args[1], re.compile(args[2])
+        # Extract arguments and compile pattern.
+        self, patterns, string = args[:3]
+        pattern = re.compile(string)
         args = args[3:]
         
-        # Ensure that there is no any name duplication in pattern and args.
+        if [None for p in patterns if p.pattern == string]:
+            raise Redundant(string)
+        
+        # Ensure that there is no name duplication in pattern and args.
         args_set = set(args)
         if len(args_set) != len(args) or args_set.intersection(pattern.groupindex):
             raise TypeError('duplicate argument names in step definition')
@@ -146,11 +187,18 @@ class StepDefinitions(object):
                 raise TypeError('duplicate argument names in step definition')
             bindings[name] = Value(value)
         
-        def registrator(func):
+        def registrator(cfunc):
             """Register function as handler for pattern in corresponded map.
             
             Also, bind default func arguments.
             """
+            
+            # Extract original function.
+            if hasattr(cfunc, '__decorated__'):
+                func = getattr(cfunc, '__decorated__')
+            else:
+                func = cfunc
+            
             # Get the names and default values of a function's arguments.
             func_args, func_varargs, func_varkw, func_defaults = inspect.getargspec(func)
             
@@ -187,9 +235,9 @@ class StepDefinitions(object):
                         % (inspect.getsourcefile(func), inspect.getsourcelines()[1], func_varargs)
                     )
             
-            patterns[pattern] = (func, func_args, func_bindings)
+            patterns[pattern] = (cfunc, func_args, func_bindings)
 
-            return func
+            return cfunc
         
         return registrator
 
@@ -198,8 +246,13 @@ class StepDefinitions(object):
         multiplexer.__outputs__.append(func)
         
         return func
-        
-    
+
+    def __add_cast(self, **kwargs):
+        def registrator(fn):
+            self.__castings[fn] = kwargs
+            return fn
+        return registrator
+
     def __find_match(self, patterns, string, multi=None):
         """Find match for string in patterns and run handler."""
         match = [ (f[0], f[1], f[2],  m) 
@@ -209,13 +262,31 @@ class StepDefinitions(object):
         ]
     
         if len(match) > 1:
-            # TODO: '--guess'ing
-            raise AmbiguousString("there is more than one match for '%s'" % string)
+            # Try to find best match if option '--guess' passed.
+            if self.guess:
+                best = sorted(                
+                    ((m, len(s), sum(s)) 
+                        for m, s in (
+                            (m, [len(g) for g in m[3].groups() if g != None]) for m in match
+                        )
+                    ),
+                    cmp=lambda a, b: -1 * cmp(a[1], b[1]) or cmp(a[2], b[2])
+                )
+                match = [x[0] for x in itertools.takewhile(lambda x: x[1:] == best[0][1:], best)]
+                if len(match) > 1:
+                    raise AmbiguousString(string, match, self.guess)
+            else:
+                raise AmbiguousString(string, match, self.guess)
         if not match:
             raise MatchNotFound("match for '%s' not found" % string)
 
         # Parameters of matched step definition.
-        func, func_args, match_bindings, matchobj = match[0]
+        cfunc, func_args, match_bindings, matchobj = match[0]
+        
+        if hasattr(cfunc, '__decorated__'):
+            func = getattr(cfunc, '__decorated__')
+        else:
+            func = cfunc
 
         # Make list of unbound values.
         unbound_groups = sorted(
@@ -228,8 +299,9 @@ class StepDefinitions(object):
         
         # Use defaultdict to pop elements from unbound_values if some argument not in match_bindings.
         bindings = collections.defaultdict(lambda: unbound_groups.pop(0), match_bindings)
-        
+            
         def get_value(attr):
+            """Return actual (and casted) value of argument."""
             value_handlers = collections.defaultdict(lambda: (lambda x: x.value), {
                 'multi': lambda x: multi,
                 'value': lambda x: x.value,
@@ -237,9 +309,18 @@ class StepDefinitions(object):
             })
             try:
                 value = bindings[attr]
-                if isinstance(value, Value):
-                    return value_handlers[value.type](value)
-                return matchobj.group(value)
+                
+                # Get actual value.
+                if isinstance(value, _Value):
+                    value = value_handlers[value.type](value)
+                else:
+                    value = matchobj.group(value)
+                
+                # Cast the value.
+                if func in self.__castings and attr in self.__castings[func]:
+                    value = self.__castings[func][attr](value)
+
+                return value
             except IndexError:
                 raise TypeError("%s:%d: unbound variable '%s' for function '%s'" \
                     % (inspect.getsourcefile(func), inspect.getsourcelines(func)[1], attr, func.__name__)
@@ -268,7 +349,7 @@ class StepDefinitions(object):
                 del(bindings[arg])
         
         # All unused groups pack into positional argument.
-        if len(unbound_groups):
+        if len(unbound_groups) and inspect.getargspec(func)[1]:
             (values.append if len(unbound_groups) == 1 else values.extend)(                    
                 matchobj.group(*unbound_groups)
             )
@@ -280,7 +361,7 @@ class StepDefinitions(object):
         for k in bindings:
             bindings[k] = get_value(k)
         
-        return Match(func, values, bindings, matchobj)
+        return Match(cfunc, values, bindings, matchobj)
 
 
     def load(self):
@@ -307,8 +388,13 @@ class StepDefinitions(object):
         
         # Set up special objects:
         setattr(decorators, 'pending', self.__pending)
+        setattr(decorators, 'assert_returns', assert_returns)
+        setattr(decorators, 'cast', self.__add_cast)
         setattr(decorators, 'multi', self.__multi)
         setattr(decorators, 'callback', self.__callback)
+        setattr(decorators, 'world', self.__world)
+        setattr(decorators, 'universe', self.__universe)
+        
         
         assert type(paths) == types.ListType
         
@@ -337,6 +423,9 @@ class StepDefinitions(object):
                     sys.path.pop(0)
         finally:
             sys.stdout = saved_stdout
+        
+        # Cleanup world after each scenario
+        self.After(self.__world)
 
 
 if __name__ == '__main__':

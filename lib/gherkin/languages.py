@@ -2,7 +2,6 @@
 
 import os, sys
 
-from singleton import singleton
 from attribute_mapper import AttributeMapper
 
 try:
@@ -12,13 +11,14 @@ except ImportError:
     sys.exit()
 
 
-languages_file = os.path.join(os.path.dirname(__file__), 'languages.yml')
+LANGUAGES_FILE = os.path.join(os.path.dirname(__file__), 'languages.yml')
 
-class Languages(object):
+
+class _Languages(object):
     def __init__(self):
         try:
             f = None
-            f = open(languages_file)
+            f = open(LANGUAGES_FILE)
             self.__yaml = yaml.load(f)
             for lang in self.__yaml:
                 for k in self.__yaml[lang]:
@@ -45,7 +45,14 @@ class Languages(object):
     def __contains__(self, key):
         return key in self.languages
 
-Languages = singleton(Languages)
+
+_LANGUAGES_INSTANCE = None
+
+def Languages():
+    global _LANGUAGES_INSTANCE
+    if _LANGUAGES_INSTANCE is None:
+        _LANGUAGES_INSTANCE = _Languages()
+    return _LANGUAGES_INSTANCE
 
 
 def set_language(lang):

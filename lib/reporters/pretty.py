@@ -5,6 +5,7 @@ import sys, os.path, types, traceback, string, collections
 from cfg.set_defaults import set_defaults
 from reporter import Reporter
 from colors import ColoredOutput, highlight_groups
+from snippet import snippet
 
 
 class StepContext(object):
@@ -18,7 +19,7 @@ class StepContext(object):
 
 class PrettyReporter(Reporter):
     def __init__(self):
-        set_defaults(self, 'backtrace', 'color_scheme', 'source', 'multiline', 'backtrace')
+        set_defaults(self, 'backtrace', 'color_scheme', 'source', 'multiline', 'backtrace', 'snippets')
         self.__out = ColoredOutput(sys.stdout)
         self.counts, self.used = collections.defaultdict(int), collections.defaultdict(set)
         self.scenario_indent = 2
@@ -35,6 +36,7 @@ class PrettyReporter(Reporter):
         self.current_row = None
         self.feature_header = None
         self.deferred_exception = None
+        self.snippets_set = set()
     
     # 'color' property
     def get_color(self):
@@ -69,6 +71,8 @@ class PrettyReporter(Reporter):
                     '%d %s step%s\n' % (self.counts[s], s, 's' if self.counts[s] != 1 else '')
                 ))
         self.__out.write(''.join(formatted))
+        
+        self.print_snippets()
     
     # Handlers for reporting of feature execution.
     #~ def skip_feature(self, filename, feature):
@@ -301,6 +305,9 @@ class PrettyReporter(Reporter):
     def undefined_step(self):
         self.format_last_step(self.color_scheme.undefined)
         
+        if self.snippets:
+            self.add_snippet()
+        
         # Statistics.
         self.used['undefined'] |= self.last_step.used
         self.counts['undefined'] += 1
@@ -344,3 +351,14 @@ class PrettyReporter(Reporter):
         # Statistics.
         self.used['pending'] |= self.last_step.used
         self.counts['pending'] += 1
+
+    def add_snippet(self):
+        self.snippets_set.add((self.last_step.section, self.last_step.step.name))
+    
+    def print_snippets(self):
+        if self.snippets_set:
+            formatted = ["\nYou can implement step definitions for missing steps with these snippets:\n", ]
+            for kw, name in self.snippets_set:
+                formatted.append('\n')
+                formatted.append(snippet(kw, name))
+            self.__out.write(self.color_scheme.undefined(''.join(formatted)))

@@ -1,20 +1,25 @@
 #!/usr/bin/env python
 
-def Given(*args, **kwargs):
-    return lambda fn: fn
+class _Placeholder(object):
+    def __getattr__(*args):
+        pass
     
+    def __call__(*args, **kwargs):
+        return lambda fn: fn
+    
+Given = _Placeholder()
+
 When = Given
 Then = Given
+pending = Given
+cast = Given
+assert_returns = Given
+universe = Given
+world = Given
 
-def Before(fn):
-    return fn
+Before = Given()
 
 After = Before
 AfterStep = Before
-
-#pending
-
+callback = Before
 multi = None
-
-def callback(*args, **kwargs):
-    pass

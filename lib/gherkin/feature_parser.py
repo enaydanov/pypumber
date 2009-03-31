@@ -70,7 +70,7 @@ class FeatureParser(PEGParser):
         return Node(
             kw = subtree[0][1][0],
             kw_i18n = subtree[0][1][1],
-            name = subtree[1][1],
+            name = subtree[1][1] or '',
             multi = subtree[2][1],
             lineno = subtree[0][1][2],
         )
@@ -116,7 +116,7 @@ class FeatureParser(PEGParser):
         return Node(
             kw = 'scenario',
             kw_i18n = subtree[1][1][0],
-            name = subtree[2][1],
+            name = subtree[2][1] or '',
             steps = subtree[3][1],
             tags = subtree[0][1],
             lineno = subtree[1][1][1],
@@ -139,7 +139,7 @@ class FeatureParser(PEGParser):
         return Node(
             kw = 'examples',
             kw_i18n = subtree[0][1],
-            name = subtree[1][1],
+            name = subtree[1][1] or '',
             table = subtree[2],
         )
 
@@ -165,7 +165,7 @@ class FeatureParser(PEGParser):
         rv = ScenarioOutline(
             kw = 'scenario_outline',
             kw_i18n = subtree[1][1][0],
-            name = subtree[2][1],
+            name = subtree[2][1] or '',
             steps = subtree[3][1],
             examples = subtree[4][1],
             tags = subtree[0][1],

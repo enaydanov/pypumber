@@ -7,5 +7,6 @@ default_options = Options(
     lang='en',
     dry_run=False,
     source=True,
+    snippets=True,
     multiline=True,
 )
