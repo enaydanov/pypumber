@@ -21,7 +21,14 @@ from split_feature_path import split_feature_path
 from objects_space import ObjectsSpace
 
 
-class AmbiguousString(Exception): 
+class MatchNotFound(Exception): 
+    """Exception: match not found."""
+    pass
+
+class Undefined(MatchNotFound):
+    pass
+
+class AmbiguousString(MatchNotFound): 
     """Exception: more than one match found."""
     # TODO: format of lines: keyword, pattern, line
     def __init__(self, string, matches, guess):
@@ -39,8 +46,8 @@ class Redundant(Exception):
     def __init__(self, string):
         Exception.__init__(self, 'Multiple step definitions have the same Regexp: "%s"\n' % string)
 
-class MatchNotFound(Exception): 
-    """Exception: match not found."""
+class StepSkipped(Exception):
+    """Exception: step skipped."""
     pass
 
 class Pending(Exception):
@@ -85,8 +92,8 @@ def Value(value=None, type='value'):
 
 
 class Match(object):
-    def __init__(self, fn, args, kwargs, matchobj):
-        self.fn, self.args, self.kwargs, self.matchobj = fn, args, kwargs, matchobj
+    def __init__(self, fn, args, kwargs, matchobj, skip=False):
+        self.fn, self.args, self.kwargs, self.matchobj, self.skip = fn, args, kwargs, matchobj, skip
         
         if hasattr(fn, '__decorated__'):
             fn = getattr(fn, '__decorated__')
@@ -102,6 +109,9 @@ class Match(object):
             self.expected_value = self.kwargs.pop(arg_name)
 
     def __call__(self):
+        if self.skip:
+            raise StepSkipped
+        
         actual_value = self.fn(*self.args, **self.kwargs)
         
         if hasattr(self, 'expected_value'):
@@ -123,7 +133,9 @@ _HOOKS = ['before', 'after', 'afterStep']
 class StepDefinitions(object):
     def __init__(self):
         # Options.
-        set_defaults(self, 'path', 'excludes', 'require', 'guess', 'verbose')
+        set_defaults(self, 'path', 'excludes', 'require', 'guess', 'verbose', 'dry_run', 'strict')
+        
+        self.skip_steps = self.dry_run
         
         # Special objects:
         self.__pending = Pending()
@@ -253,6 +265,10 @@ class StepDefinitions(object):
             return fn
         return registrator
 
+    #
+    # Find match for step.
+    # 
+
     def __find_match(self, patterns, string, multi=None):
         """Find match for string in patterns and run handler."""
         match = [ (f[0], f[1], f[2],  m) 
@@ -278,10 +294,17 @@ class StepDefinitions(object):
             else:
                 raise AmbiguousString(string, match, self.guess)
         if not match:
-            raise MatchNotFound("match for '%s' not found" % string)
+            raise Undefined("match for '%s' not found" % string)
 
         # Parameters of matched step definition.
         cfunc, func_args, match_bindings, matchobj = match[0]
+        
+        if self.skip_steps:
+            return Match(cfunc, [], match_bindings, matchobj, True)
+        
+        #
+        # Values binding.
+        #
         
         if hasattr(cfunc, '__decorated__'):
             func = getattr(cfunc, '__decorated__')
@@ -363,6 +386,9 @@ class StepDefinitions(object):
         
         return Match(cfunc, values, bindings, matchobj)
 
+    #
+    # Load all step definitions.
+    #
 
     def load(self):
         """Load step definitions from configured paths."""

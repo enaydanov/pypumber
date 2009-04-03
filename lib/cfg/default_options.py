@@ -2,7 +2,7 @@
 
 from options import Options
 
-default_options = Options(
+DEFAULT_OPTIONS = Options(
     strict=False,
     lang='en',
     dry_run=False,

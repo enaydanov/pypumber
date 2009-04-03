@@ -43,6 +43,8 @@ DEFAULT_COLORS = {
     'passed_param': 	color('reset', 'green', 'bold'),
     'skipped': color('reset', 'cyan'),
     'skipped_param': color('reset', 'cyan', 'bold'),
+    'outline': color('reset', 'cyan'),
+    'outline_param': color('reset', 'cyan', 'bold'),
     'comment': color('reset', 'black', 'bold'),
     'tag': color('reset', 'cyan'),
 }

@@ -9,8 +9,14 @@ __license__ = "Python"
 
 from peg import PEGParser, Node
 from feature_grammar import feature
+
+# AST modules.
 from table import Table
+from step import Step
+from scenario import Scenario
+from background import Background
 from scenario_outline import ScenarioOutline
+from feature import Feature
 
 
 class FeatureParser(PEGParser):
@@ -66,14 +72,25 @@ class FeatureParser(PEGParser):
             3. name
             4. multi
             5. lineno
+            6. section (initialized in Scenario)
         """
-        return Node(
+        return Step(
             kw = subtree[0][1][0],
             kw_i18n = subtree[0][1][1],
             name = subtree[1][1] or '',
             multi = subtree[2][1],
             lineno = subtree[0][1][2],
         )
+    
+    def _assign_sections(self, steps):
+        """Translate 'And's and 'But's to 'Given', 'When', or 'Then'"""
+        current_section = None
+        for step in steps:
+            if step.kw in ['given', 'when', 'then']:
+                current_section = step.kw
+            if current_section is None:
+                raise SyntaxError("discover '%s' before 'given', 'when' or 'then'" % step.kw)
+            step.section = current_section
     
     #
     # Background.
@@ -86,11 +103,15 @@ class FeatureParser(PEGParser):
             2. kw_i18n
             3. steps
         """
-        return Node(
+        rv =  Background(
             kw = 'background',
             kw_i18n = subtree[0][1],
             steps = subtree[1][1],
         )
+        
+        self._assign_sections(rv.steps)
+        
+        return rv
     
     #
     # Scenario.
@@ -112,15 +133,18 @@ class FeatureParser(PEGParser):
             4. steps
             5. tags
             6. lineno
+            8. background (initialized in Feature)
         """
-        return Node(
+        rv = Scenario(
             kw = 'scenario',
             kw_i18n = subtree[1][1][0],
             name = subtree[2][1] or '',
             steps = subtree[3][1],
-            tags = subtree[0][1],
+            tags = frozenset(subtree[0][1]),
             lineno = subtree[1][1][1],
         )
+        
+        self._assign_sections(rv.steps)
         
         return rv
 
@@ -161,6 +185,7 @@ class FeatureParser(PEGParser):
             5. examples
             6. tags
             7. lineno
+            8. background (initialized in Feature)
         """
         rv = ScenarioOutline(
             kw = 'scenario_outline',
@@ -168,9 +193,11 @@ class FeatureParser(PEGParser):
             name = subtree[2][1] or '',
             steps = subtree[3][1],
             examples = subtree[4][1],
-            tags = subtree[0][1],
+            tags = frozenset(subtree[0][1]),
             lineno = subtree[1][1][1],
         )
+        
+        self._assign_sections(rv.steps)
 
         # Backup templates.
         for step in rv.steps:
@@ -183,7 +210,18 @@ class FeatureParser(PEGParser):
     # Feature.
     #
     def feature(self, subtree):
-        return Node(**dict(subtree))
+        rv = Feature(**dict(subtree))
+        
+        if 'background' not in rv:
+            rv.background = None
+        
+        # Assign background to feature elements.
+        for sc in rv.feature_elements:
+            sc.background = rv.background
+        
+        rv.tags = frozenset(rv.tags)
+        
+        return rv
 
     #
     # Table.

@@ -12,11 +12,13 @@ import backports
 from reporters.pretty import PrettyReporter
 from colors.console_colors import DEFAULT_COLORS
 from colors import ColorScheme, console_color_string
-from run import Run
-from cfg import *
 from multiplexer import Multiplexer
+
+from run import Run
 from features import Features
 from step_definitions import StepDefinitions
+
+from event import add_listener
 
 #
 # Collect options from different sources:
@@ -27,10 +29,15 @@ from step_definitions import StepDefinitions
 #   5) command line options
 #
 
+from cfg.cli_options import CommandLineOptions
+from cfg.profile_options import ProfileOptions
+from cfg.env_options import EnvOptions
+from cfg.default_options import DEFAULT_OPTIONS
+
 cli_opts = CommandLineOptions()
 
 # Use Multiplexer because I want to know the source of all options. 
-options = Multiplexer(default_options, ProfileOptions(), EnvOptions(), cli_opts)
+options = Multiplexer(DEFAULT_OPTIONS, ProfileOptions(), EnvOptions(), cli_opts)
 
 # If '--profile' option passed from command line, load such profile. 
 if cli_opts.profile:
@@ -40,8 +47,22 @@ if cli_opts.profile:
 # Configure output:
 #   use only 'pretty' format with default color scheme.
 #
+
+log = file('a.log', 'w')
+
+class Listener(object):
+    def __call__(self, type, object):
+        repr_str = repr(object).split('\n')[0]
+        if len(repr_str) > 50:
+            repr_str = repr_str[:50]
+        print>>log, type, repr_str
+
+add_listener(Listener())
+
 reporter = PrettyReporter()
 reporter.color_scheme = ColorScheme(DEFAULT_COLORS, console_color_string)
+
+add_listener(reporter)
 
 #
 # Create main app objects.
@@ -54,4 +75,4 @@ run = Run()
 options(reporter, features,  step_definitions, run)
 
 step_definitions.load()
-run(features, step_definitions, reporter)
+run(features, step_definitions)

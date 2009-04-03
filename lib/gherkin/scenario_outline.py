@@ -9,19 +9,37 @@ __license__ = "Python"
 import types, re
 
 from peg import Node
+from event import EVENT
 from subst_params import subst_params
+from scenario import Scenario
 
-class ScenarioOutline(Node):
+
+class ScenarioOutline(Scenario):
     def __init__(self, **attrs):
-        Node.__init__(self, **attrs)
-        self.current_example = None
+        Scenario.__init__(self, **attrs)
+        
+        self.full_reset()
+
+    def reset(self):
+        Scenario.reset(self)
+        self.current_columns = None
+        self.current_widths = None
         self.current_row = None
     
-    def __call__(self):
-        self.kw = 'scenario'
+    def full_reset(self):
+        Scenario.full_reset(self)
+    
+    def run(self, step_definitions):
+        EVENT('scenario_outline', self)
+        
+        Scenario.run(self, None)
+
         for ex in self.examples:
+            EVENT('examples', ex)
+            
             pattern = re.compile(r'<(%s)>' % '|'.join(ex.table.columns))
-            self.current_example = ex
+            self.current_columns = ex.table.columns
+            self.current_widths = ex.table.widths
            
             for values in ex.table.rows:
                 self.current_row = values
@@ -36,6 +54,13 @@ class ScenarioOutline(Node):
                             # Table
                             used_in_multi = step.multi.subst(pattern, values)
                         used |= used_in_multi
+                    step.full_reset()
                     step.used_parameters = used
-                
-                yield self
+                Scenario.reset(self)
+                Scenario.run(self, step_definitions)
+
+        self.status = 'done'
+        self.exception = None
+        self.tb = None
+        
+        EVENT('scenario_outline', self)

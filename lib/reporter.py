@@ -4,68 +4,8 @@ import os.path, glob, sys, copy
 
 
 class Reporter(object):
-    # Handlers for reporting about whole run execution.
-    #~ def start_run(self, scenario_names, tags):
-        #~ pass
-
-    #~ def pass_run(self):
-        #~ pass
-    
-    #~ def fail_run(self, type, value, traceback):
-        #~ pass
-
-
-    # Handlers for reporting of feature execution.
-    #~ def skip_feature(self, filename, header, tags):
-        #~ pass
-        
-    #~ def start_feature(filename, header, tags):
-        #~ pass
-
-    #~ def pass_feature(self):
-        #~ pass
-    
-    #~ def fail_feature(self, type, value, traceback):
-        #~ pass
-
-
-    # Handlers for reporting of steps execution.
-    #~ def start_background(i18n_kw):
-        #~ pass
-
-    #~ def pass_background(self):
-        #~ pass
-    
-    #~ def fail_background(self, type, value, traceback):
-        #~ pass
-
-
-    # Handlers for reporting of steps execution.
-    #~ def skip_scenario(self, kw, i18n_kw, name, tags):
-        #~ pass
-    
-    #~ def start_scenario(self, kw, i18n_kw, name, tags):
-        #~ pass
-
-    #~ def pass_scenario(self):
-        #~ pass
-    
-    #~ def fail_scenario(self, type, value, traceback):
-        #~ pass
-
-
-    # Handlers for reporting of steps execution.
-    #~ def start_step(self, section, kw, i18n_kw, name):
-        #~ return StepObject()
-    
-    #~ def pass_step(self):
-        #~ pass
-    
-    #~ def fail_step(self, type, value, traceback):
-        #~ pass
-    
-    def __getattr__(self, attr):
-        return lambda *args, **kwargs: None
+    def __call__(self, msg_type, msg_value):
+        getattr(self, msg_type, lambda x: None)(msg_value)
 
 
 def load_reporters(d):
