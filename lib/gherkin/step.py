@@ -40,6 +40,8 @@ class Step(Node):
             try:
                 if self.match is None:
                     self.match = getattr(step_definitions, self.section)(self.name, self.multi)
+                else:
+                    self.match.skip = step_definitions.skip_steps
                 self.match()
                 self.status = 'passed'
             except StepSkipped:

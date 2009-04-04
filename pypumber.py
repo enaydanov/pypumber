@@ -1,5 +1,12 @@
 #! /usr/bin/env python
 
+__author__ = "Eugene Naydanov (e.najdanov@gmail.com)"
+__version__ = "$Rev: $"
+__date__ = "$Date: $"
+__copyright__ = "Copyright (c) 2009 Eugene Naydanov"
+__license__ = "Python"
+
+
 import sys, os
 
 def make_path(*path):
@@ -48,20 +55,8 @@ if cli_opts.profile:
 #   use only 'pretty' format with default color scheme.
 #
 
-log = file('a.log', 'w')
-
-class Listener(object):
-    def __call__(self, type, object):
-        repr_str = repr(object).split('\n')[0]
-        if len(repr_str) > 50:
-            repr_str = repr_str[:50]
-        print>>log, type, repr_str
-
-add_listener(Listener())
-
 reporter = PrettyReporter()
 reporter.color_scheme = ColorScheme(DEFAULT_COLORS, console_color_string)
-
 add_listener(reporter)
 
 #

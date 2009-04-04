@@ -38,14 +38,32 @@ class Feature(Node):
                 _tags = self.tags | sc.tags
                 if (negative_tags & _tags) or not (positive_tags & _tags):
                     continue
-            
-            step_definitions.skip_steps = step_definitions.dry_run
-            
-            if self.background and self.background.first_run:
-                step_definitions.before()
-                self.background.run(step_definitions)
 
-            sc.run(step_definitions)
+            for scenario in sc:
+                if step_definitions:
+                    step_definitions.skip_steps = step_definitions.dry_run
+                    step_definitions.skip_steps |= bool(self.background) and self.background.failed
+                        
+                skip_before_after = not bool(step_definitions) or step_definitions.skip_steps
+                
+                #
+                # Run sequence: Before -> Background -> Scenario -> After
+                #
+                if not skip_before_after:
+                    step_definitions.before()
+                   
+                if self.background:
+                    self.background.run(step_definitions)
+                    skip_before_after |= self.background.failed
+                
+                scenario.run(step_definitions)
+                
+                if not skip_before_after:
+                    step_definitions.after()
+
+                # Prepare background for next scenario.
+                if self.background:
+                    self.background.reset()
 
         self.status = 'done'
         

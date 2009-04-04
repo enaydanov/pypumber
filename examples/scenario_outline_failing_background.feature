@@ -7,11 +7,11 @@ Feature: Failing background with scenario outlines sample
     Then I should have '<count>' cukes
     Examples:
       |count|
-      | 10  |
-  
+
   @tag1 @tag2
   Scenario Outline: another failing background
-    Then I should have '<count>' cukes
+    Then I should have "<count>" cukes
     Examples:
       |count|
       | 10  |
+      | 20  |

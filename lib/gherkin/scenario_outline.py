@@ -29,11 +29,9 @@ class ScenarioOutline(Scenario):
     def full_reset(self):
         Scenario.full_reset(self)
     
-    def run(self, step_definitions):
+    def __iter__(self):
         EVENT('scenario_outline', self)
         
-        Scenario.run(self, None)
-
         for ex in self.examples:
             EVENT('examples', ex)
             
@@ -57,7 +55,7 @@ class ScenarioOutline(Scenario):
                     step.full_reset()
                     step.used_parameters = used
                 Scenario.reset(self)
-                Scenario.run(self, step_definitions)
+                yield self
 
         self.status = 'done'
         self.exception = None

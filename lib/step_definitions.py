@@ -148,17 +148,13 @@ class StepDefinitions(object):
         self.__castings = {}
 
         # Create mappings, decorators and runners for step definitions.
+        self.__step_definitions = {}
+        
         for kw in _STEP_KEYWORDS:
-            # Create map.
-            map_name = '_map_%s' % kw
             deco_name = kw.capitalize()
-            setattr(self, map_name, {})
-            map = getattr(self, map_name)
-            
-            # Make decorators and runners.
-            setattr(self, deco_name, partial(self.__add_rule, map))
-            self.__pending._set_sub_decorator(deco_name, getattr(self, deco_name))
-            setattr(self, kw, partial(self.__find_match, map))
+            setattr(self, deco_name, self.__add_rule)
+            self.__pending._set_sub_decorator(deco_name, self.__add_rule)
+            setattr(self, kw, self.__find_match)
         
         # Create multiplexers and decorators for hooks.
         for hook in _HOOKS:
@@ -170,7 +166,8 @@ class StepDefinitions(object):
         """Add rule for string to patterns (which is one of the mappings)."""
 
         # Extract arguments and compile pattern.
-        self, patterns, string = args[:3]
+        self, string = args[:2]
+        patterns = self.__step_definitions
         pattern = re.compile(string)
         args = args[3:]
         
@@ -269,11 +266,11 @@ class StepDefinitions(object):
     # Find match for step.
     # 
 
-    def __find_match(self, patterns, string, multi=None):
+    def __find_match(self, string, multi=None):
         """Find match for string in patterns and run handler."""
         match = [ (f[0], f[1], f[2],  m) 
             for f, m in [
-                (f, p.search(string)) for p, f in patterns.items()
+                (f, p.search(string)) for p, f in self.__step_definitions.items()
             ] if m
         ]
     

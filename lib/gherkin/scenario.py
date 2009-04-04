@@ -25,19 +25,13 @@ class Scenario(Node):
     def full_reset(self):
         self.reset()
     
+    def __iter__(self):
+        yield self
+    
     def run(self, step_definitions):
-        if step_definitions is not None:
-            step_definitions.skip_steps = step_definitions.dry_run
-            step_definitions.before()
-        
-        if self.background:
-            self.background.run(step_definitions)
-            self.exception = self.background.exception
-            self.tb = self.background.tb
-
         EVENT('scenario', self)
 
-        for step in self.steps:
+        for step in self.steps:    
             step.run(step_definitions)
             if step.exception:
                 self.exception = step.exception
@@ -46,6 +40,3 @@ class Scenario(Node):
         self.status = self.exception and 'failed' or 'passed'
 
         EVENT('scenario', self)
-
-        if step_definitions is not None:
-            step_definitions.after()

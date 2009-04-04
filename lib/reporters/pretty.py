@@ -1,21 +1,31 @@
 #! /usr/bin/env python
 
+__author__ = "Eugene Naydanov (e.najdanov@gmail.com)"
+__version__ = "$Rev: $"
+__date__ = "$Date: $"
+__copyright__ = "Copyright (c) 2009 Eugene Naydanov"
+__license__ = "Python"
+
+
 import sys, os.path, types, traceback, string, collections
+from StringIO import StringIO
 
 from cfg.set_defaults import set_defaults
 from reporter import Reporter
 from colors import ColoredOutput, highlight_groups
 from snippet import snippet
+from step_definitions import Undefined
 
 
 class PrettyReporter(Reporter):
     def __init__(self):
         set_defaults(self, 'backtrace', 'color_scheme', 'source', 'multiline', 'snippets', 'strict')
         self.__out = ColoredOutput(sys.stdout)
+        self.__real_out = self.__out
 
         self.silent_steps = False
         self.current_feature = None
-        self.talign = string.center
+        self.talign = string.ljust
 
         # Indents.
         self.scenario_indent = 2
@@ -29,12 +39,13 @@ class PrettyReporter(Reporter):
         
         # Deferred output.
         self.feature_header = None
+        self.scenario_outline_header = None
 
         # Scenario formatter by default.
         self.scenario = self.__default_scenario_formatter
         
         # Set of undefined steps.
-        self.undefined = set()
+        self.undefined = dict()
 
     # 'color' property
     def get_color(self):
@@ -47,7 +58,8 @@ class PrettyReporter(Reporter):
     def get_out(self):
         return self.__out
     def set_out(self, stream):
-        self.__out.output_stream = stream 
+        self.__out.output_stream = stream
+        self.__real_out = self.__out
     out = property(get_out, set_out)
 
     #
@@ -76,7 +88,7 @@ class PrettyReporter(Reporter):
     def format_table_row(self, cols):
         rv = ['']
         for value, color, width in cols:
-            rv.append(color(self.talign(value, width+2)))
+            rv.append(color(' %s ' % self.talign(value, width)))
         rv.append('')
         
         return '|'.join(rv)
@@ -88,7 +100,13 @@ class PrettyReporter(Reporter):
             self.feature_header = None
 
 
-    def print_exception(self, exception, tb):
+    def print_scenario_outline_header(self):
+        if self.scenario_outline_header is not None:
+            self.__out.write(self.scenario_outline_header)
+            self.scenario_outline_header = None
+        
+
+    def print_exception(self, exception, tb, status):
         if self.backtrace and tb:
             error_message = traceback.format_exception(type(exception), exception, tb)
         else:
@@ -99,15 +117,15 @@ class PrettyReporter(Reporter):
         for line in error_message:
             formatted.extend((indent + line, '\n'))
 
-        self.__out.write(self.color_scheme.failed(''.join(formatted)))
+        self.__out.write(getattr(self.color_scheme, status, lambda x: x)(''.join(formatted)))
 
 
     def print_snippets(self):
         if self.undefined:
             formatted = ["\nYou can implement step definitions for missing steps with these snippets:\n", ]
-            for kw, name in self.undefined:
+            for name, (kw, multi) in self.undefined.items():
                 formatted.append('\n')
-                formatted.append(snippet(kw, name))
+                formatted.append(snippet(kw, name, multi))
             self.__out.write(self.color_scheme.undefined(''.join(formatted)))
 
     #
@@ -206,6 +224,8 @@ class PrettyReporter(Reporter):
 
     def __outline_scenario_formatter(self, sc):
         if sc.status is None:
+            self.print_scenario_outline_header()
+            self.silent_steps = True
             return
         
         # Collect colors for cells
@@ -222,8 +242,8 @@ class PrettyReporter(Reporter):
         
         self.__out.write(''.join((' '* self.step_indent, self.format_table_row(row), '\n',)))
         
-        if sc.exception and (self.strict or sc.status != 'undefined'):
-            self.print_exception(sc.exception, sc.tb)
+        if sc.exception and (self.strict or not isinstance(sc.exception, Undefined)):
+            self.print_exception(sc.exception, sc.tb, sc.status)
 
         # Statistics.
         self.counts['scenarios'] += 1
@@ -231,10 +251,13 @@ class PrettyReporter(Reporter):
 
     def scenario_outline(self, sc):
         if sc.status == 'done':
+            self.print_scenario_outline_header()
+            self.counts['scenarios'] -= 1
             self.scenario = self.__default_scenario_formatter
         else:
-            self.counts['scenarios'] -= 1
             self.print_feature_header()
+            self.__out = StringIO()
+            sc.run(None)
 
 
     def examples(self, ex):
@@ -247,9 +270,17 @@ class PrettyReporter(Reporter):
         formatted.append('\n')
         self.__out.write(''.join(formatted))
         self.scenario = self.__outline_scenario_formatter
+        
+        # Deferring output.
+        self.scenario_outline_header = self.__out.getvalue()
+        self.__out = self.__real_out
 
 
     def background(self, bg):
+        if bg.status == 'done':
+            self.silent_steps = False
+            return
+        
         if bg.first_run:
             self.print_feature_header()
             self.set_source_indent(bg.steps, len(bg.kw_i18n))
@@ -267,6 +298,9 @@ class PrettyReporter(Reporter):
             return
             
         self.counts[step.status] += 1
+
+        if self.snippets and step.status == 'undefined' and step.name not in self.undefined:
+            self.undefined[step.name] = (step.section, step.multi)
 
         if self.silent_steps:
             return
@@ -325,11 +359,8 @@ class PrettyReporter(Reporter):
                         (table_indent,  self.format_table_row(zip([row[f] for f in fields], colors, widths)), '\n')
                     )                
                 formatted.extend(table)
-        
+            
         self.__out.write(''.join(formatted))
 
         if step.exception and (self.strict or step.status != 'undefined'):
-            self.print_exception(step.exception, step.tb)
-        
-        if self.snippets and step.status == 'undefined':
-            self.undefined.add((step.section, step.name))
+            self.print_exception(step.exception, step.tb, step.status)

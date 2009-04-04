@@ -18,21 +18,31 @@ class Background(Node):
         self.full_reset()
     
     def reset(self):
+        self.status = None
         self.exception = None
         self.tb = None
 
     def full_reset(self):
         self.first_run = True
+        self.failed = False
         self.reset()
 
     def run(self, step_definitions):
         EVENT('background', self)
         
         for step in self.steps:
+            step.reset()
             step.run(step_definitions)
-            
+
             if step.exception:
                 self.exception = step.exception
                 self.tb = step.tb
 
-        self.first_run = False
+        if self.first_run:
+            if self.exception:
+                self.failed = True
+            self.first_run = False
+        
+        self.status = 'done'
+        
+        EVENT('background', self)

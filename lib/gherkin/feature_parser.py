@@ -212,6 +212,9 @@ class FeatureParser(PEGParser):
     def feature(self, subtree):
         rv = Feature(**dict(subtree))
         
+        if rv.feature_elements is None:
+            rv.feature_elements = []
+        
         if 'background' not in rv:
             rv.background = None
         
