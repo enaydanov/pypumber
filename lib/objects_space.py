@@ -17,5 +17,8 @@ class ObjectsSpace(object):
     def __setattr__(self, attr, value):
         object.__getattribute__(self, '__objects')[attr] = value
     
+    def __contains__(self, attr):
+        return attr in object.__getattribute__(self, '__objects')
+    
     def __call__(self):
         object.__setattr__(self, '__objects', {})

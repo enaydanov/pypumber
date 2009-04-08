@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 
+import os.path
+
 from options import Options
 
 class CommandLineOptions(Options):
@@ -9,4 +11,4 @@ class CommandLineOptions(Options):
         Options.__init__(self)
         opts, args = parser.parse_args()
         self.options = opts.__dict__
-        self.options['path'] = args
+        self.options['path'] = [os.path.normpath(path) for path in args]

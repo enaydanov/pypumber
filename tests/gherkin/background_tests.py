@@ -19,12 +19,16 @@ class StepPlaceholder(object):
     def __init__(self, fail_message=None):
         self.fail_message = fail_message
         self.exception = None
+        self.tb = None
         self.invoked = False
     
     def run(self, step_definitions):
         self.invoked = True
         if self.fail_message:
             self.exception = Exception(self.fail_message)
+    
+    def reset(self):
+        pass
 
 # Tests.
 

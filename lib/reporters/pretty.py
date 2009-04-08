@@ -30,7 +30,7 @@ class PrettyReporter(Reporter):
         # Indents.
         self.scenario_indent = 2
         self.step_indent = 4
-        self.table_indent = 6
+        self.multiline_indent = 6
         self.traceback_indent = 6
         self.source_indent = 0  # will be recalculated for each scenario
 
@@ -69,8 +69,8 @@ class PrettyReporter(Reporter):
     def set_source_indent(self, steps, minimal):
         lengths = [self.scenario_indent - self.step_indent + minimal,]
         if steps is not None:
-            lengths.extend([len(step.kw_i18n) + len(step.name) for step in steps])
-        self.source_indent = max(lengths) + 1
+            lengths.extend([len(self.format_name(step.kw_i18n, step.name)) for step in steps])
+        self.source_indent = max(lengths)
 
 
     def format_tags(self, tags):
@@ -92,6 +92,12 @@ class PrettyReporter(Reporter):
         rv.append('')
         
         return '|'.join(rv)
+    
+    
+    def format_name(self, kw, name):
+        from gherkin.i18n_grammar import _language
+        
+        return '%s%s%s' % (kw, _language.space_after_keyword and ' ' or '', name)
 
 
     def print_feature_header(self):
@@ -201,7 +207,7 @@ class PrettyReporter(Reporter):
             formatted.extend((indent, self.format_tags(sc.tags), '\n'))
 
         # Calculate source indent for this scenario. 
-        sc_len = len(kw) + len(name)
+        sc_len = len(kw) + len(name) + 1
         self.set_source_indent(sc.steps, sc_len)
         
         # Print Scenario line.
@@ -212,7 +218,7 @@ class PrettyReporter(Reporter):
             formatted.append(self.format_source(
                 self.current_feature.filename,
                 sc.lineno,
-                self.source_indent - sc_len + self.step_indent - self.scenario_indent
+                self.source_indent - sc_len + self.step_indent - self.scenario_indent + 1
             ))
         
         formatted.append('\n')
@@ -282,10 +288,11 @@ class PrettyReporter(Reporter):
             return
         
         if bg.first_run:
+            bg_name = self.format_name(bg.kw_i18n, bg.name)
             self.print_feature_header()
-            self.set_source_indent(bg.steps, len(bg.kw_i18n))
+            self.set_source_indent(bg.steps, len(bg_name))
             self.__out.write(''.join(
-                ('\n', ' ' * self.scenario_indent, bg.kw_i18n, '\n')
+                ('\n', ' ' * self.scenario_indent, bg_name, '\n')
             ))
             
             self.silent_steps = False
@@ -311,16 +318,19 @@ class PrettyReporter(Reporter):
         
         kw, name, multi, indent = step.kw_i18n, step.name, step.multi, ' ' * self.step_indent
            
-        formatted = [indent, regular(kw), ' ']
-        formatted.append(
-            regular(name)
-                if highlight is None or step.match is None else 
-            highlight_groups(
-                step.match.matchobj, 
-                regular, 
-                highlight
-            )
-        )
+        formatted = [
+            indent,
+            self.format_name(
+                regular(kw), 
+                regular(name)
+                    if highlight is None or step.match is None else 
+                highlight_groups(
+                    step.match.matchobj, 
+                    regular, 
+                    highlight
+                )
+            ),
+        ]
         
         # Print source of steps and scenarios.
         if self.source:
@@ -338,25 +348,23 @@ class PrettyReporter(Reporter):
         
         # Print mulitiline args.
         if self.multiline and multi is not None:
+            multiline_indent = ' ' * self.multiline_indent
             if type(multi) == types.StringType:
                 # PyString
-                formatted.append(regular(
-                    '%s"""\n%s\n%s"""\n' % (indent, multi, indent)
+                formatted.extend((
+                    '%s%s\n' % (multiline_indent, regular(s)) for s in ['"""'] + multi.split('\n') + ['"""']
                 ))
             else:
                 # Table
                 fields, rows, w = multi.columns, multi.rows, multi.widths
                 
-                # Table row prefix.
-                table_indent = ' ' * self.table_indent
-                
                 # Print table.
                 colors = [regular] * len(fields)
                 widths = [w[f] for f in fields]
-                table = [table_indent, self.format_table_row(zip(fields, colors, widths)), '\n']
+                table = [multiline_indent, self.format_table_row(zip(fields, colors, widths)), '\n']
                 for row in rows:
                     table.extend(
-                        (table_indent,  self.format_table_row(zip([row[f] for f in fields], colors, widths)), '\n')
+                        (multiline_indent,  self.format_table_row(zip([row[f] for f in fields], colors, widths)), '\n')
                     )                
                 formatted.extend(table)
             

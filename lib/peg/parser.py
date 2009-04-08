@@ -77,6 +77,7 @@ class PEGParser(object):
     def __init__(self, grammar):
         self._handlers = {
             types.StringType: self._string_terminal,
+            types.UnicodeType: self._string_terminal,
             type(re.compile('')): self._re_terminal,
             types.FunctionType: self._non_terminal,
             types.TupleType: self._sequence,

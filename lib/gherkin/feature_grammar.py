@@ -26,8 +26,8 @@ def tags(): # done
 
 @compile_re
 def tag_name(): # done
-    """ tag_name <- [^@\n\t ]+ """
-    return Re(r'[^@\n\t ]+')
+    """ tag_name <- [^@\r\n\t ]+ """
+    return Re(r'[^@\r\n\t ]+')
     
 def tag(): # done
     """ tag <- '@' tag_name """
@@ -42,8 +42,8 @@ def comment_line(): # done
     return '#', line_to_eol
 
 def background(): # done
-    """ background <- comment white background_keyword space* (eol+ | eof) steps """
-    return comment, white, background_keyword, ZeroOrMore(space), [OneOrMore(eol), eof], steps
+    """ background <- comment white background_keyword space* name (eol+ | eof) steps """
+    return comment, white, background_keyword, ZeroOrMore(space), name, [OneOrMore(eol), eof], steps
     
 def feature_elements(): # done
     """ feature_elements <- (scenario | scenario_outline)* """
@@ -54,8 +54,8 @@ def name(): # done
     return line_to_eol
 
 def scenario(): # done
-    """ scenario <- comment tags white scenario_keyword space* name (white | eof) steps white """
-    return comment, tags, white, scenario_keyword, ZeroOrMore(space), name, [white, eof], steps, white
+    """ scenario <- comment tags white scenario_keyword space* name white steps white """
+    return comment, tags, white, scenario_keyword, ZeroOrMore(space), name, white, steps, white
     
 def scenario_outline(): # done
     """ scenario_outline <- comment tags white scenario_outline_keyword space* name white steps examples_sections white """
@@ -70,16 +70,16 @@ def multi(): # done
     return ZeroOrOne(multiline_arg)
     
 def step(): # done
-    """ step <- comment space* step_keyword space* name (eol+ | eof) multi white """
-    return comment, ZeroOrMore(space), step_keyword, ZeroOrMore(space), name, [OneOrMore(eol), eof], multi, white
+    """ step <- comment space* step_keyword keyword_space name (eol+ | eof) multi white """
+    return comment, ZeroOrMore(space), step_keyword, keyword_space, name, [OneOrMore(eol), eof], multi, white
     
 def examples_sections(): # done
     """ examples_sections <- examples* """
     return ZeroOrMore(examples)
 
 def examples(): # done
-    """ examples <- space* examples_keyword space* name? eol table white """
-    return ZeroOrMore(space), examples_keyword, ZeroOrMore(space), ZeroOrOne(name), eol, table, white
+    """ examples <- space* examples_keyword space* name eol table white """
+    return ZeroOrMore(space), examples_keyword, ZeroOrMore(space), name, eol, table, white
 
 def multiline_arg(): # done
     """ multiline_arg <- table | py_string """
@@ -93,21 +93,31 @@ def s(): # done
     """ s <- (!close_py_string .)* """
     return ZeroOrMore(Not(close_py_string), AnyChar)
 
+# MODIFIED
+# was: open_py_string, s, close_py_string
 def py_string(): # done
     """ py_string <- open_py_string s close_py_string """
-    return open_py_string, s, close_py_string
+    return indent, open_py_string, s, close_py_string
+
+# NEW
+@compile_re
+def indent():
+    """ indent <- space* """
+    return Re(r'[ \t]*')
 
 def quotes(): # done
     """ quotes <- '\"""' """
     return '"""'
 
+# MODIFIED
+# was: white, quotes, ZeroOrMore(space), eol
 def open_py_string(): # done
-    """ open_py_string <- white quotes space* eol """
-    return white, quotes, ZeroOrMore(space), eol
+    """ open_py_string <- quotes space* eol """
+    return  quotes, ZeroOrMore(space), eol
 
 def close_py_string(): # done
     """ close_py_string <- eol space* quotes white """
-    return eol, ZeroOrMore(space), quotes, white
+    return eol, ZeroOrMore(space), quotes, white 
 
 def white(): # done
     """ white <- (space | eol)* """

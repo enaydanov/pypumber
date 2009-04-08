@@ -2,6 +2,7 @@
 
 import re
 from peg import *
+from table_grammar import space
 
 _language = None
 
@@ -24,3 +25,9 @@ def step_keyword():
 def examples_keyword():
     """ examples_keyword <- 'Examples', ':'? """
     return _language.examples, ZeroOrOne(':')
+
+def keyword_space():
+    if _language.space_after_keyword == 'true':
+        return OneOrMore(space)
+    else:
+        return ZeroOrMore(space)

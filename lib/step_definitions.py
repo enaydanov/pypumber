@@ -169,7 +169,7 @@ class StepDefinitions(object):
         self, string = args[:2]
         patterns = self.__step_definitions
         pattern = re.compile(string)
-        args = args[3:]
+        args = args[2:]
         
         if [None for p in patterns if p.pattern == string]:
             raise Redundant(string)

@@ -29,7 +29,6 @@ class Cucumber(object):
         self.age += d
     
     @Given(r"^I'm is (\d+) days old$", self=world.cuke)
-    @When(r"^I'm is (\d+) days old$", self=universe.cuke)
     @cast(d=int)
     def set_age(self, d):
         assert d < 100000, 'this is very wrong age for cucumber'
@@ -39,7 +38,7 @@ class Cucumber(object):
     @cast(length=float)
     @assert_returns('length')
     def get_length(self):
-        """We have a cucumbers that grow by 0.1 cm each day"""
+        """We have cucumbers that grow by 0.1 cm each day"""
         return self.age * 0.1
     
     @Then(r'^I have (?P<color>.*) color$', self=world.cuke)

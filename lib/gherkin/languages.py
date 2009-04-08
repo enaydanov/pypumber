@@ -22,7 +22,7 @@ class _Languages(object):
             self.__yaml = yaml.load(f)
             for lang in self.__yaml:
                 for k in self.__yaml[lang]:
-                    if k not in ['name', 'native', 'encoding']:
+                    if k not in ['name', 'native', 'encoding', 'space_after_keyword']:
                         self.__yaml[lang][k] = [alt.strip() for alt in self.__yaml[lang][k].split('|')]
         except IOError:
             sys.stderr.write("Error: unable to load languages from `%s'.\n" % languages_file)

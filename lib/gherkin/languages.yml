@@ -20,6 +20,8 @@
   then: Then
   and: And
   but: But
+  space_after_keyword: true
+
 # Please help us keeping the languages below uptodate. The parsers for a language
 # that is missing a keyword will expect the English word until the missing word(s)
 # are added.
@@ -31,12 +33,16 @@
   native: العربية
   encoding: UTF-8
   feature: خاصية
+  background: الخلفية
   scenario: سيناريو
+  scenario_outline: سيناريو مخطط
+  examples: امثلة
   given: بفرض
-  when: متى
-  then: اذاً
+  when: متى|عندما
+  then: اذاً|ثم
   and: و
   but: لكن
+  space_after_keyword: true
 "cy":
   name: Welsh
   native: Cymraeg
@@ -49,6 +55,7 @@
   then: Yna
   and: A
   but: Ond
+  space_after_keyword: true
 "cz":
   name: Czech
   native: Česky
@@ -63,6 +70,7 @@
   then: Pak
   and: A
   but: Ale
+  space_after_keyword: true
 "da":
   name: Danish
   native: dansk
@@ -77,6 +85,7 @@
   then: Så
   and: Og
   but: Men
+  space_after_keyword: true
 "de":
   name: German
   native: Deutsch
@@ -91,6 +100,22 @@
   then: Dann
   and: Und
   but: Aber
+  space_after_keyword: true
+"en-au":
+  name: Australian
+  native: Australian
+  encoding: UTF-8
+  feature: Crikey
+  background: Background
+  scenario: Mate
+  scenario_outline: Blokes
+  examples: Cobber
+  given: Ya know how
+  when: When
+  then: Ya gotta
+  and: N
+  but: Cept
+  space_after_keyword: true
 "en-lol":
   name: LOLCAT
   native: LOLCAT
@@ -100,24 +125,27 @@
   scenario: MISHUN
   scenario_outline: MISHUN SRSLY
   examples: EXAMPLZ
-  given: GIVN
+  given: I CAN HAZ
   when: WEN
   then: DEN
   and: AN
   but: BUT
+  space_after_keyword: true
 "en-tx":
   name: Texan
   native: Texan
   encoding: UTF-8
   feature: Feature
+  background: Background
   scenario: Scenario
-  scenario_outline: Scenario Outline
+  scenario_outline: All y'all
   examples: Examples
   given: Given y'all
   when: When y'all
   then: Then y'all
   and: And y'all
   but: But y'all
+  space_after_keyword: true
 "es":
   name: Spanish
   native: español
@@ -132,22 +160,28 @@
   then: Entonces
   and: Y
   but: Pero
+  space_after_keyword: true
 "et":
   name: Estonian
   native: eesti keel
   encoding: UTF-8
   feature: Omadus
+  background: Taust
   scenario: Stsenaarium
+  scenario_outline: Raamstsenaarium
+  examples: Juhtumid
   given: Eeldades
   when: Kui
   then: Siis
   and: Ja
   but: Kuid
+  space_after_keyword: true
 "fi":
   name: Finnish
   native: suomi
   encoding: UTF-8
   feature: Ominaisuus
+  background: Tausta
   scenario: Tapaus
   scenario_outline: Tapausaihio
   examples: Tapaukset
@@ -156,6 +190,7 @@
   then: Niin
   and: Ja
   but: Mutta
+  space_after_keyword: true
 "fr":
   name: French
   native: français
@@ -170,11 +205,13 @@
   then: Alors
   and: Et
   but: Mais
+  space_after_keyword: true
 "id":
   name: Indonesian
   native: Bahasa Indonesia
   encoding: UTF-8
   feature: Fitur
+  background: Dasar
   scenario: Skenario
   scenario_outline: Skenario konsep
   examples: Contoh
@@ -183,18 +220,22 @@
   then: Maka
   and: Dan
   but: Tapi
+  space_after_keyword: true
 "it":
   name: Italian
   native: italiano
   encoding: UTF-8
   feature: Funzionalità
+  background: Contesto
   scenario: Scenario
-  more_examples: Più esempi
+  scenario_outline: Schema dello scenario
+  examples: Esempi
   given: Dato
   when: Quando
   then: Allora
   and: E
   but: Ma
+  space_after_keyword: true
 "ja":
   name: Japanese
   native: 日本語
@@ -202,13 +243,14 @@
   feature: フィーチャ
   background: 背景
   scenario: シナリオ
-  scenario_outline: シナリオテンプレート|テンプレ|シナリオテンプレ
+  scenario_outline: シナリオアウトライン|シナリオテンプレート|テンプレ|シナリオテンプレ
   examples: 例|サンプル
   given: 前提
   when: もし
   then: ならば
   and: かつ
   but: しかし
+  space_after_keyword: false
 "lt":
   name: Lithuanian
   native: lietuvių kalba
@@ -221,17 +263,22 @@
   then: Tada
   and: Ir
   but: Bet
+  space_after_keyword: true
 "nl":
   name: Dutch
   native: Nederlands
   encoding: UTF-8
   feature: Functionaliteit
+  background: Achtergrond
   scenario: Scenario
+  scenario_outline: Abstract Scenario
+  examples: Voorbeelden
   given: Gegeven
   when: Als
   then: Dan
   and: En
   but: Maar
+  space_after_keyword: true
 "no":
   name: Norwegian
   native: norsk
@@ -246,31 +293,37 @@
   then: Så
   and: Og
   but: Men
+  space_after_keyword: true
 "pl":
   name: Polish
   native: polski
   encoding: UTF-8
   feature: Właściwość
+  background: Założenia
   scenario: Scenariusz
-  given: Dane
+  scenario_outline: Szablon scenariusza
+  examples: Przykłady
+  given: Zakładając
   when: Jeżeli
   then: Wtedy
   and: Oraz
   but: Ale
+  space_after_keyword: true
 "pt":
   name: Portuguese
   native: português
   encoding: UTF-8
   background: Contexto
-  feature: Característica
-  scenario: Cenário
-  scenario_outline: Esquema do Cenário
+  feature: Funcionalidade
+  scenario: Cenário|Cenario
+  scenario_outline: Esquema do Cenário|Esquema do Cenario
   examples: Exemplos
   given: Dado
   when: Quando
-  then: Então
+  then: Então|Entao
   and: E
   but: Mas
+  space_after_keyword: true
 "ro":
   name: Romanian
   native: română
@@ -282,6 +335,7 @@
   then: Atunci
   and: Si
   but: Dar
+  space_after_keyword: true
 "ro2":
   name: Romanian (diacritical)
   native: română (diacritical)
@@ -293,20 +347,22 @@
   then: Atunci
   and: Și
   but: Dar
+  space_after_keyword: true
 "ru":
   name: Russian
-  native: русский язык
+  native: русский
   encoding: UTF-8
   feature: Функционал
   background: Предыстория
   scenario: Сценарий
   scenario_outline: Структура сценария
-  examples: Примеры
-  given: Сначала
+  examples: Значения
+  given: Допустим
   when: Если
   then: То
-  and: И
-  but: Но
+  and: И|К тому же
+  but: Но|А
+  space_after_keyword: true
 "se":
   name: Swedish
   native: Svenska
@@ -321,17 +377,52 @@
   then: Så
   and: Och
   but: Men
+  space_after_keyword: true
+"sk":
+  name: Slovak
+  native: Slovensky
+  encoding: UTF-8
+  feature: Požiadavka
+  background: Pozadie
+  scenario: Scenár
+  scenario_outline: Náčrt Scenáru
+  examples: Príklady
+  given: Pokiaľ
+  when: Keď
+  then: Tak
+  and: A
+  but: Ale
+  space_after_keyword: true
 "zh-CN":
   name: Chinese simplified
-  native: 中文
+  native: 简体中文
   encoding: UTF-8
   feature: 功能
+  background: 背景
   scenario: 场景
+  scenario_outline: 场景大纲
+  examples: 例子
   given: 假如
   when: 当
   then: 那么
   and: 而且
   but: 但是
+  space_after_keyword: false
+"zh-TW":
+  name: Chinese traditional
+  native: 繁體中文
+  encoding: UTF-8
+  feature: 功能
+  background: 背景
+  scenario: 場景|劇本
+  scenario_outline: 場景大綱|劇本大綱
+  examples: 例子
+  given: 假設
+  when: 當
+  then: 那麼
+  and: 而且|並且
+  but: 但是
+  space_after_keyword: false
 "ko":
   name: Korean
   native: 한국어
@@ -341,23 +432,24 @@
   scenario: 시나리오
   scenario_outline: 시나리오 개요
   examples: 예
-  more_examples: 다른 예
   given: 조건
   when: 만일
   then: 그러면
   and: 그리고
   but: 하지만
-"zh-TW":
-  name: Chinese traditional
-  native: 繁體中文
+  space_after_keyword: false
+"bg":
+  name: Bulgarian
+  native: български
   encoding: UTF-8
-  feature: 功能
-  background: 背景
-  scenario: 劇本
-  scenario_outline: 劇本概要
-  examples: 例如
-  given: 如果
-  when: 當
-  then: 然後
-  and: 而且
-  but: 但是
+  feature: Функционалност
+  background: Предистория
+  scenario: Сценарий
+  scenario_outline: Рамка на сценарий
+  examples: Примери
+  given: Дадено
+  when: Когато
+  then: То
+  and: И
+  but: Но
+  space_after_keyword: true  

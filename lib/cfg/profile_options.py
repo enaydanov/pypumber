@@ -11,23 +11,30 @@ except ImportError:
 from options import Options
 from cli_options_parser import parser
 
-_pypumber_yml = os.path.join(os.path.dirname(__file__), '..',  '..', 'pypumber.yml')
+_PROFILES = None
 
-try:
-    f = None
-    f = open(_pypumber_yml)
-    _profiles = yaml.load(f)
-except IOError:
-    sys.stderr.write("Error: unable to load `pypumber.yml'\n")
-    sys.exit()
-finally:
-    if f:
-        f.close()
+if os.path.isfile('pypumber.yml'):
+    try:
+        f = None
+        f = open(_pypumber_yml)
+        _PROFILES = yaml.load(f)
+    except IOError:
+        sys.stderr.write("Error: unable to load `pypumber.yml'\n")
+        sys.exit()
+    finally:
+        if f:
+            f.close()
 
 class ProfileOptions(Options):
     def __init__(self, profile='default'):
         Options.__init__(self)
         
-        opts, args = parser.parse_args(shlex.split(_profiles[profile]))
-        self.options = opts.__dict__
-        self.options['path'] = args
+        if _PROFILES is not None:
+            try:
+                opts, args = parser.parse_args(shlex.split(_PROFILES[profile]))
+                self.options = opts.__dict__
+                self.options['path'] = args
+            except KeyError:
+                if profile != 'default':
+                    sys.stderr.write("Error: there is no profile with name '%s'\n" % profile)
+                    sys.exit()

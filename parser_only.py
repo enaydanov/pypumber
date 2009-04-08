@@ -18,7 +18,8 @@ options = Options(
     lang='en',
     multiline=True,
     #path=['examples\\scenario_outline_failing_background.feature', ]
-    path=['examples\\complex.feature', ]
+    #path=['examples\\complex.feature', ]
+    path=['tmp\\a.feature', ]
     #path=['examples\\self_test\\features\\sample.feature', ]
 )
 
@@ -26,4 +27,5 @@ features = Features()
 options(features)
 
 for f, t, l in features:
+    #pass
     print fill(repr(t))

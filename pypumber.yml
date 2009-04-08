@@ -1,1 +1,2 @@
-default: --format progress features
+#default: --format progress features
+default: --format pretty features

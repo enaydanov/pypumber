@@ -6,6 +6,7 @@ __date__ = "$Date: $"
 __copyright__ = "Copyright (c) 2009 Eugene Naydanov"
 __license__ = "Python"
 
+import re
 
 from peg import PEGParser, Node
 from feature_grammar import feature
@@ -23,15 +24,15 @@ class FeatureParser(PEGParser):
     _shadowed_non_terminals = [
         'line_to_eol', 'ts', 's', 'feature', 'step', 'tag_name', 'multiline_arg', 
         'cell', 'cells', 'table_row', 'scenario', 'scenario_outline', 'tag', 
-        'examples', 'table', 'py_string',
+        'examples', 'table', 'py_string', 'indent',
     ]
     _skipped_non_terminals = [
         'space', 'eol', 'white', 'comment', 'quotes', 'open_py_string', 
-        'close_py_string', 'eof',
+        'close_py_string', 'eof', 'keyword_space',
     ]
     _string_non_terminals = [
         'header', 's', 'line_to_eol', 'background_keyword', 'examples_keyword', 
-        'tag', 'py_string',
+        'tag',
     ]
     
     def __init__(self):
@@ -101,12 +102,14 @@ class FeatureParser(PEGParser):
         Background will have following properties:
             1. kw
             2. kw_i18n
-            3. steps
+            3. name
+            4. steps
         """
         rv =  Background(
             kw = 'background',
             kw_i18n = subtree[0][1],
-            steps = subtree[1][1],
+            name = subtree[1][1] or '',
+            steps = subtree[2][1] or [],
         )
         
         self._assign_sections(rv.steps)
@@ -139,7 +142,7 @@ class FeatureParser(PEGParser):
             kw = 'scenario',
             kw_i18n = subtree[1][1][0],
             name = subtree[2][1] or '',
-            steps = subtree[3][1],
+            steps = subtree[3][1] or [],
             tags = frozenset(subtree[0][1]),
             lineno = subtree[1][1][1],
         )
@@ -191,7 +194,7 @@ class FeatureParser(PEGParser):
             kw = 'scenario_outline',
             kw_i18n = subtree[1][1][0],
             name = subtree[2][1] or '',
-            steps = subtree[3][1],
+            steps = subtree[3][1] or [],
             examples = subtree[4][1],
             tags = frozenset(subtree[0][1]),
             lineno = subtree[1][1][1],
@@ -242,6 +245,16 @@ class FeatureParser(PEGParser):
             return Table(subtree)
         except:
             raise SyntaxError("unable to build a Table from the subtree: %s" % subtree)
+
+    #
+    # PyString.
+    #
+    def indent(self, subtree):
+        return len(subtree)
+    
+    def py_string(self, subtree):
+        regexp = re.compile(r'^[ \t]{0,%d}' % subtree[0], re.M)
+        return regexp.sub('', subtree[1]).replace('\\"', '"')
 
 if __name__ == '__main__':
     pass
