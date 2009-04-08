@@ -27,7 +27,7 @@ def examples_keyword():
     return _language.examples, ZeroOrOne(':')
 
 def keyword_space():
-    if _language.space_after_keyword == 'true':
+    if _language.space_after_keyword:
         return OneOrMore(space)
     else:
         return ZeroOrMore(space)
